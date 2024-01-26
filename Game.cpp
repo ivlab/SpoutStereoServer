@@ -2,6 +2,15 @@
 // Game.cpp
 //
 
+/*
+* convert to d3d win32 game template (not uwp) to support win32 calls used by spout
+* link with spout
+* borderless window
+* set pos and size
+* maybe text for debug output
+* trap/send mouse and kbd events
+*/
+
 #include "pch.h"
 #include "Game.h"
 
@@ -28,9 +37,73 @@ void Game::Initialize(HWND window, int width, int height)
 
     CreateDevice();
 
-    CreateResources();
+    CreateOrUpdateWindowSpecificResources();
 
-    // TODO: Change the timer settings if you want something other than the default variable timestep mode.
+
+    // Create simple shaders for fullscreen quad (these are compiled into header files during the build)
+    // Right-click on the .hlsl files and go to Properties to configure this.
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateVertexShader(g_vertexshader, sizeof(g_vertexshader), nullptr, &m_vertexShader)
+    );
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreatePixelShader(g_pixelshader, sizeof(g_pixelshader), nullptr, &m_pixelShader)
+    );        
+
+    // Create Sampler State (Texturing Settings)
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+    samplerDesc.BorderColor[0] = 1.0f;
+    samplerDesc.BorderColor[1] = 1.0f;
+    samplerDesc.BorderColor[2] = 1.0f;
+    samplerDesc.BorderColor[3] = 1.0f;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateSamplerState(&samplerDesc, &m_samplerState)
+    );
+
+    // Create a texture by hand (TODO: Replace with Spout connection)
+    int texWidth = m_outputWidth;
+    int texHeight = m_outputHeight;
+    int texNumChannels = 4;
+    int texNumPixels = texWidth * texHeight;
+    int texBytesPerRow = texNumChannels * texWidth;
+    
+    unsigned char* texBytes = new unsigned char[texNumPixels * texNumChannels];
+    for (int i = 0; i < texNumPixels; i++) {
+        texBytes[i * texNumChannels + 0] = 255 * (i % 2);  // red
+        texBytes[i * texNumChannels + 1] = 255 * (i % 2);  // green
+        texBytes[i * texNumChannels + 2] = 255 * (i % 2);  // blue
+        texBytes[i * texNumChannels + 3] = 255;  // alpha
+    }
+
+    D3D11_TEXTURE2D_DESC textureDesc = {};
+    textureDesc.Width = texWidth;
+    textureDesc.Height = texHeight;
+    textureDesc.MipLevels = 1;
+    textureDesc.ArraySize = 1;
+    textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+    D3D11_SUBRESOURCE_DATA textureSubresourceData = {};
+    textureSubresourceData.pSysMem = texBytes;
+    textureSubresourceData.SysMemPitch = texBytesPerRow;
+
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateTexture2D(&textureDesc, &textureSubresourceData, &m_textureLeft)
+    );
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateShaderResourceView(m_textureLeft, nullptr, &m_textureViewLeft)
+    );
+
+    delete[] texBytes;
+
+
+    // Change the timer settings if you want something other than the default variable timestep mode.
     // e.g. for 60 FPS fixed timestep update logic, call:
     /*
     m_timer.SetFixedTimeStep(true);
@@ -67,25 +140,31 @@ void Game::Render()
         return;
     }
 
-    Clear();
+    // -- LEFT EYE --
+    m_d3dContext->OMSetRenderTargets(1, m_renderTargetViewLeft.GetAddressOf(), nullptr);
+    m_d3dContext->ClearRenderTargetView(m_renderTargetViewLeft.Get(), Colors::Red);
 
-    // TODO: Add your rendering code here.
+    m_d3dContext->RSSetViewports(1, &m_viewport);
+    m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    m_d3dContext->VSSetShader(m_vertexShader, nullptr, 0);
+    m_d3dContext->PSSetShader(m_pixelShader, nullptr, 0);
+    m_d3dContext->PSSetShaderResources(0, 1, &m_textureViewLeft);
+    m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
+    m_d3dContext->Draw(4, 0);
+    
+    // -- RIGHT EYE --
+    m_d3dContext->OMSetRenderTargets(1, m_renderTargetViewLeft.GetAddressOf(), nullptr);
+    m_d3dContext->ClearRenderTargetView(m_renderTargetViewLeft.Get(), Colors::Blue);
+
+    m_d3dContext->RSSetViewports(1, &m_viewport);
+    m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    m_d3dContext->VSSetShader(m_vertexShader, nullptr, 0);
+    m_d3dContext->PSSetShader(m_pixelShader, nullptr, 0);
+    m_d3dContext->PSSetShaderResources(0, 1, &m_textureViewRight);
+    m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
+    m_d3dContext->Draw(4, 0);
 
     Present();
-}
-
-// Helper method to clear the back buffers.
-void Game::Clear()
-{
-    // Clear the views.
-    m_d3dContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::CornflowerBlue);
-    m_d3dContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
-    m_d3dContext->OMSetRenderTargets(1, m_renderTargetView.GetAddressOf(), m_depthStencilView.Get());
-
-    // Set the viewport.
-    D3D11_VIEWPORT viewport = { 0.0f, 0.0f, static_cast<float>(m_outputWidth), static_cast<float>(m_outputHeight), 0.f, 1.f };
-    m_d3dContext->RSSetViewports(1, &viewport);
 }
 
 // Presents the back buffer contents to the screen.
@@ -138,7 +217,7 @@ void Game::OnWindowSizeChanged(int width, int height)
     m_outputWidth = std::max(width, 1);
     m_outputHeight = std::max(height, 1);
 
-    CreateResources();
+    CreateOrUpdateWindowSpecificResources();
 
     // TODO: Game window is being resized.
 }
@@ -219,18 +298,17 @@ void Game::CreateDevice()
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
-void Game::CreateResources()
+void Game::CreateOrUpdateWindowSpecificResources()
 {
     // Clear the previous window size specific context.
     m_d3dContext->OMSetRenderTargets(0, nullptr, nullptr);
-    m_renderTargetView.Reset();
-    m_depthStencilView.Reset();
+    m_renderTargetViewLeft.Reset();
+    m_renderTargetViewRight.Reset();
     m_d3dContext->Flush();
 
     const UINT backBufferWidth = static_cast<UINT>(m_outputWidth);
     const UINT backBufferHeight = static_cast<UINT>(m_outputHeight);
     const DXGI_FORMAT backBufferFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
-    const DXGI_FORMAT depthBufferFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     constexpr UINT backBufferCount = 2;
 
     // If the swap chain already exists, resize it, otherwise create one.
@@ -275,19 +353,16 @@ void Game::CreateResources()
         swapChainDesc.SampleDesc.Quality = 0;
         swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swapChainDesc.BufferCount = backBufferCount;
+        swapChainDesc.Stereo = TRUE;
 
         DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
         fsSwapChainDesc.Windowed = TRUE;
 
         // Create a SwapChain from a Win32 window.
-        DX::ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(
-            m_d3dDevice.Get(),
-            m_window,
-            &swapChainDesc,
-            &fsSwapChainDesc,
-            nullptr,
-            m_swapChain.ReleaseAndGetAddressOf()
-            ));
+        DX::ThrowIfFailed(
+            dxgiFactory->CreateSwapChainForHwnd(m_d3dDevice.Get(), m_window, &swapChainDesc,
+                &fsSwapChainDesc, nullptr, m_swapChain.ReleaseAndGetAddressOf())
+        );
 
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.
         DX::ThrowIfFailed(dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER));
@@ -300,29 +375,42 @@ void Game::CreateResources()
     // Create a view interface on the rendertarget to use on bind.
     DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf()));
 
-    // Allocate a 2-D surface as the depth/stencil buffer and
-    // create a DepthStencil view on this surface to use on bind.
-    CD3D11_TEXTURE2D_DESC depthStencilDesc(depthBufferFormat, backBufferWidth, backBufferHeight, 1, 1, D3D11_BIND_DEPTH_STENCIL);
+    // Create a descriptor for the left eye view.
+    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewLeftDesc(
+        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 0, 1
+    );
 
-    ComPtr<ID3D11Texture2D> depthStencil;
-    DX::ThrowIfFailed(m_d3dDevice->CreateTexture2D(&depthStencilDesc, nullptr, depthStencil.GetAddressOf()));
+    // Create a view interface on the rendertarget to use on bind for mono or left eye view.
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewLeftDesc, m_renderTargetViewLeft.ReleaseAndGetAddressOf())
+    );
 
-    DX::ThrowIfFailed(m_d3dDevice->CreateDepthStencilView(depthStencil.Get(), nullptr, m_depthStencilView.ReleaseAndGetAddressOf()));
+    // Create a descriptor for the right eye view.
+    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewRightDesc(
+        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 1, 1
+    );
 
-    // TODO: Initialize windows-size dependent objects here.
+    // Create a view interface on the rendertarget to use on bine for right eye view.
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewRightDesc, m_renderTargetViewRight.ReleaseAndGetAddressOf())
+    );
+
+
+    // Initialize window-size dependent objects here.
+    m_viewport = CD3D11_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_outputWidth), static_cast<float>(m_outputHeight));
 }
 
 void Game::OnDeviceLost()
 {
     // TODO: Add Direct3D resource cleanup here.
 
-    m_depthStencilView.Reset();
-    m_renderTargetView.Reset();
+    m_renderTargetViewLeft.Reset();
+    m_renderTargetViewRight.Reset();
     m_swapChain.Reset();
     m_d3dContext.Reset();
     m_d3dDevice.Reset();
 
     CreateDevice();
 
-    CreateResources();
+    CreateOrUpdateWindowSpecificResources();
 }

@@ -42,12 +42,10 @@ private:
 
     void Update(DX::StepTimer const& timer);
     void Render();
-
-    void Clear();
     void Present();
 
     void CreateDevice();
-    void CreateResources();
+    void CreateOrUpdateWindowSpecificResources();
 
     void OnDeviceLost();
 
@@ -61,9 +59,21 @@ private:
     Microsoft::WRL::ComPtr<ID3D11DeviceContext1>    m_d3dContext;
 
     Microsoft::WRL::ComPtr<IDXGISwapChain1>         m_swapChain;
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView>  m_renderTargetView;
-    Microsoft::WRL::ComPtr<ID3D11DepthStencilView>  m_depthStencilView;
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView>  m_renderTargetViewLeft;
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView>  m_renderTargetViewRight;
+    CD3D11_VIEWPORT                                 m_viewport;
 
     // Rendering loop timer.
     DX::StepTimer                                   m_timer;
+
+    // Left/Right Textures
+    ID3D11Texture2D*                                m_textureLeft;
+    ID3D11Texture2D*                                m_textureRight;
+    ID3D11ShaderResourceView*                       m_textureViewLeft;
+    ID3D11ShaderResourceView*                       m_textureViewRight;
+    ID3D11SamplerState*                             m_samplerState;
+
+    // Shaders for Rendering Fullscreen Quad
+    ID3D11VertexShader*                             m_vertexShader;
+    ID3D11PixelShader*                              m_pixelShader;
 };
