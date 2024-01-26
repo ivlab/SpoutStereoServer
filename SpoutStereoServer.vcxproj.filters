@@ -29,4 +29,11 @@
       <Filter>Assets</Filter>
     </Manifest>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="PixelShader.hlsl" />
+    <FxCompile Include="VertexShader.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+  </ItemGroup>
 </Project>

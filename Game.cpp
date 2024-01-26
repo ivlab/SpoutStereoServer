@@ -13,6 +13,8 @@
 
 #include "pch.h"
 #include "Game.h"
+#include "Generated Files/PixelShader.h"
+#include "Generated Files/VertexShader.h"
 
 extern void ExitGame() noexcept;
 
@@ -100,6 +102,13 @@ void Game::Initialize(HWND window, int width, int height)
         m_d3dDevice->CreateShaderResourceView(m_textureLeft, nullptr, &m_textureViewLeft)
     );
 
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateTexture2D(&textureDesc, &textureSubresourceData, &m_textureRight)
+    );
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateShaderResourceView(m_textureRight, nullptr, &m_textureViewRight)
+    );
+
     delete[] texBytes;
 
 
@@ -153,17 +162,18 @@ void Game::Render()
     m_d3dContext->Draw(4, 0);
     
     // -- RIGHT EYE --
-    m_d3dContext->OMSetRenderTargets(1, m_renderTargetViewLeft.GetAddressOf(), nullptr);
-    m_d3dContext->ClearRenderTargetView(m_renderTargetViewLeft.Get(), Colors::Blue);
+    
+    m_d3dContext->OMSetRenderTargets(1, m_renderTargetViewRight.GetAddressOf(), nullptr);
+    m_d3dContext->ClearRenderTargetView(m_renderTargetViewRight.Get(), Colors::Blue);
 
-    m_d3dContext->RSSetViewports(1, &m_viewport);
-    m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    m_d3dContext->VSSetShader(m_vertexShader, nullptr, 0);
-    m_d3dContext->PSSetShader(m_pixelShader, nullptr, 0);
+    //m_d3dContext->RSSetViewports(1, &m_viewport);
+    //m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    //m_d3dContext->VSSetShader(m_vertexShader, nullptr, 0);
+    //m_d3dContext->PSSetShader(m_pixelShader, nullptr, 0);
     m_d3dContext->PSSetShaderResources(0, 1, &m_textureViewRight);
-    m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
+    //m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
     m_d3dContext->Draw(4, 0);
-
+    
     Present();
 }
 
@@ -344,6 +354,7 @@ void Game::CreateOrUpdateWindowSpecificResources()
         ComPtr<IDXGIFactory2> dxgiFactory;
         DX::ThrowIfFailed(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
 
+        /**
         // Create a descriptor for the swap chain.
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         swapChainDesc.Width = backBufferWidth;
@@ -354,6 +365,21 @@ void Game::CreateOrUpdateWindowSpecificResources()
         swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swapChainDesc.BufferCount = backBufferCount;
         swapChainDesc.Stereo = TRUE;
+        **/
+
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+        swapChainDesc.Width = backBufferWidth;
+        swapChainDesc.Height = backBufferHeight;
+        swapChainDesc.Format = backBufferFormat;
+        swapChainDesc.SampleDesc.Count = 1;
+        swapChainDesc.SampleDesc.Quality = 0;
+        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        swapChainDesc.BufferCount = backBufferCount;
+        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+        swapChainDesc.Scaling = DXGI_SCALING_NONE; // ASPECT_RATIO_STRETCH;
+        swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+        swapChainDesc.Stereo = TRUE;
+        swapChainDesc.Flags = 0;
 
         DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
         fsSwapChainDesc.Windowed = TRUE;
@@ -371,9 +397,6 @@ void Game::CreateOrUpdateWindowSpecificResources()
     // Obtain the backbuffer for this window which will be the final 3D rendertarget.
     ComPtr<ID3D11Texture2D> backBuffer;
     DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
-
-    // Create a view interface on the rendertarget to use on bind.
-    DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf()));
 
     // Create a descriptor for the left eye view.
     CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewLeftDesc(

@@ -21,7 +21,7 @@ struct VS_Output {
 Texture2D    mytexture : register(t0);
 SamplerState mysampler : register(s0);
 
-float4 main(VS_Output input) : SV_TARGET
+float4 main(VS_Output input) : SV_Target
 {
     return mytexture.Sample(mysampler, input.uv); 
     //return float4(1,1,0,1);
