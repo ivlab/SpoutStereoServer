@@ -5,6 +5,8 @@
 
 #pragma once
 
+
+
 #include <winsdkver.h>
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0601
@@ -16,7 +18,7 @@
 
 // DirectX apps don't need GDI
 #define NODRAWTEXT
-#define NOGDI
+//#define NOGDI
 #define NOBITMAP
 
 // Include <mcx.h> if you need this

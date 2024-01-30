@@ -5,16 +5,64 @@
       <UniqueIdentifier>e8fff57b-2a95-4a64-9605-b8359dc52fac</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dds;dlg;fbx;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tga;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="SpoutDX">
+      <UniqueIdentifier>{942de34f-b816-4b4a-9352-a391fd0dbfaf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="StepTimer.h" />
+    <ClInclude Include="SpoutDX\SpoutCommon.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="SpoutDX\SpoutCopy.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="SpoutDX\SpoutDirectX.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="SpoutDX\SpoutDX.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="SpoutDX\SpoutFrameCount.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="SpoutDX\SpoutSenderNames.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="SpoutDX\SpoutSharedMemory.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="SpoutDX\SpoutUtils.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="SpoutDX\SpoutCopy.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
+    <ClCompile Include="SpoutDX\SpoutDirectX.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
+    <ClCompile Include="SpoutDX\SpoutDX.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
+    <ClCompile Include="SpoutDX\SpoutFrameCount.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
+    <ClCompile Include="SpoutDX\SpoutSenderNames.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
+    <ClCompile Include="SpoutDX\SpoutSharedMemory.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
+    <ClCompile Include="SpoutDX\SpoutUtils.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource.rc" />
@@ -35,5 +83,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="frontwall-stereowindow.txt" />
   </ItemGroup>
 </Project>
