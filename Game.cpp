@@ -80,7 +80,8 @@ Game::Game() noexcept :
     m_textureViewRight(NULL),
     m_samplerState(NULL),
     m_pixelShader(NULL),
-    m_vertexShader(NULL)
+    m_vertexShader(NULL),
+    m_inStandbyMode(true)
 {
 
     // Get command line args in the silly Windows way:
@@ -173,6 +174,9 @@ void Game::Initialize(HWND window)
 
     // Set the position, size, and make the window render above the toolbar
     SetWindowPos(m_window, HWND_TOPMOST, m_xPos, m_yPos, m_outputWidth, m_outputHeight, SWP_SHOWWINDOW);
+
+    // Start minimized
+    ShowWindow(m_window, SW_MINIMIZE);
 
 
     // Create simple shaders for fullscreen quad (these are compiled into header files during the build)
@@ -505,6 +509,17 @@ void Game::ResetDevice()
     CreateOrUpdateWindowSpecificResources();
 }
 
+void Game::OnSpoutConnectionOpen()
+{
+    // Restore the window in case it is currently minimized
+    ShowWindow(m_window, SW_RESTORE);
+}
+
+void Game::OnSpoutConnectionClose()
+{
+    // Minimize the window
+    ShowWindow(m_window, SW_MINIMIZE);
+}
 
 
 
@@ -529,6 +544,11 @@ void Game::Update(DX::StepTimer const& timer)
 
     // Receive a new texture
     if (m_receiverLeft.ReceiveTexture()) {
+        if (m_inStandbyMode) {
+            m_inStandbyMode = false;
+            OnSpoutConnectionOpen();
+        }
+        
         // The D3D11 device within the SpoutDX class could have changed.
         // If it has switched to use a different sender graphics adapter,
         // stop receiving the texture and re-initialize the application.
@@ -562,6 +582,10 @@ void Game::Update(DX::StepTimer const& timer)
         if (m_receivedTextureViewLeft != nullptr) {
             m_receivedTextureViewLeft->Release();
             m_receivedTextureViewLeft = nullptr;
+            if (!m_inStandbyMode) {
+                m_inStandbyMode = true;
+                OnSpoutConnectionClose();
+            }
         }
     }
 
@@ -570,6 +594,11 @@ void Game::Update(DX::StepTimer const& timer)
 
     // Receive a new texture
     if (m_receiverRight.ReceiveTexture()) {
+        if (m_inStandbyMode) {
+            m_inStandbyMode = false;
+            OnSpoutConnectionOpen();
+        }
+
         // The D3D11 device within the SpoutDX class could have changed.
         // If it has switched to use a different sender graphics adapter,
         // stop receiving the texture and re-initialize the application.
@@ -603,6 +632,10 @@ void Game::Update(DX::StepTimer const& timer)
         if (m_receivedTextureViewRight != nullptr) {
             m_receivedTextureViewRight->Release();
             m_receivedTextureViewRight = nullptr;
+            if (!m_inStandbyMode) {
+                m_inStandbyMode = true;
+                OnSpoutConnectionClose();
+            }
         }
     }
 }

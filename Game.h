@@ -34,6 +34,8 @@ public:
     void OnSuspending();
     void OnResuming();
     void OnWindowSizeChanged(int width, int height);
+    void OnSpoutConnectionOpen();
+    void OnSpoutConnectionClose();
 
     // Properties
     void GetDefaultSize( int& width, int& height ) const noexcept;
@@ -88,4 +90,6 @@ private:
     spoutDX m_receiverRight;
     ID3D11Texture2D* m_receivedTextureRight = nullptr;
     ID3D11ShaderResourceView* m_receivedTextureViewRight = nullptr;
+
+    bool m_inStandbyMode;
 };

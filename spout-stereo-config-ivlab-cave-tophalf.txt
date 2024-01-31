@@ -1,0 +1,11 @@
+
+# Top 1/2 of each screen of the IV/LAB CAVE (left, front, right, floor)
+
+WINDOW_WIDTH = 5120
+WINDOW_HEIGHT = 720
+WINDOW_X = 0
+WINDOW_Y = 0
+WINDOW_TITLEBAR_VISIBLE = 0
+
+SPOUT_SENDER_NAME_LEFT = "CaveTopHalf_LeftEye"
+SPOUT_SENDER_NAME_RIGHT = "CaveTopHalf_RightEye"
