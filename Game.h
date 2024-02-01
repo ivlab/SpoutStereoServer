@@ -4,8 +4,11 @@
 
 #pragma once
 
+#include "pch.h"
 #include "SpoutDX/SpoutDX.h"
 #include "StepTimer.h"
+
+#include <minvr3.h>
 
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.
@@ -52,6 +55,8 @@ private:
 
     void OnDeviceLost();
 
+    void PollKeyUpDownEvent(DirectX::Keyboard::Keys keyId, const std::string& keyName, std::vector<VREvent*>* eventList);
+    
     // Device resources.
     HWND                                            m_window;
     int                                             m_xPos;
@@ -92,4 +97,21 @@ private:
     ID3D11ShaderResourceView* m_receivedTextureViewRight = nullptr;
 
     bool m_inStandbyMode;
+
+    std::unique_ptr<DirectX::SpriteFont> m_font;
+    std::unique_ptr<DirectX::SpriteBatch> m_spriteBatch;
+
+    bool m_quitOnEsc;
+    std::unique_ptr<DirectX::Keyboard> m_keyboard;
+    std::unique_ptr<DirectX::Mouse> m_mouse;
+    DirectX::Keyboard::KeyboardStateTracker m_keyboardStateTracker;
+    DirectX::Mouse::ButtonStateTracker m_mouseStateTracker;
+
+    bool m_openMinVREventConnection;
+    std::string m_minVRDevName;
+    int m_port;
+    int m_readWriteTimeoutMs;
+    SOCKET m_listenerFd;
+    std::vector<SOCKET> m_clientFds;
+    std::vector<std::string> m_clientDescs;
 };

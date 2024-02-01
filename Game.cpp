@@ -3,11 +3,9 @@
 //
 
 /* TODO
-* build release and install
-* test sync and performance with Unity apps
-* 
-* ----
-* use as a minvr event provider: trap/send mouse and kbd events
+* test fullscreen and sync and performance with Unity apps
+* test minvr connection for events
+* install in V
 */
 
 #include <windows.h>
@@ -29,6 +27,7 @@
 extern void ExitGame() noexcept;
 
 using namespace DirectX;
+using namespace DirectX::SimpleMath;
 
 using Microsoft::WRL::ComPtr;
 
@@ -81,7 +80,12 @@ Game::Game() noexcept :
     m_samplerState(NULL),
     m_pixelShader(NULL),
     m_vertexShader(NULL),
-    m_inStandbyMode(true)
+    m_inStandbyMode(true),
+    m_openMinVREventConnection(true),
+    m_port(9030),
+    m_readWriteTimeoutMs(500),
+    m_quitOnEsc(true),
+    m_minVRDevName("SpoutStereoServer")
 {
 
     // Get command line args in the silly Windows way:
@@ -106,7 +110,7 @@ Game::Game() noexcept :
         else if ((arg == "-c") || (arg == "--configval")) {
             if (argc > i + 1) {
                 std::string keyValPair(argv[i + 1]);
-                int equalsPos = keyValPair.find("=");
+                size_t equalsPos = keyValPair.find("=");
                 if (equalsPos != std::string::npos) {
                     std::string key = keyValPair.substr(0, equalsPos);
                     std::string val = keyValPair.substr(equalsPos + 1);
@@ -139,10 +143,17 @@ Game::Game() noexcept :
     m_outputWidth = ConfigVal::Get("WINDOW_WIDTH", 1280);
     m_outputHeight = ConfigVal::Get("WINDOW_HEIGHT", 1280);
 
-    std::string leftSender = ConfigVal::Get("SPOUT_SENDER_NAME_LEFT", std::string("Left Eye"));
+    std::string leftSender = ConfigVal::Get("SPOUT_SENDER_NAME_LEFT", std::string("CaveWalls_LeftEye"));
     m_receiverLeft.SetReceiverName(leftSender.c_str());
-    std::string rightSender = ConfigVal::Get("SPOUT_SENDER_NAME_RIGHT", std::string("Right Eye"));
+    std::string rightSender = ConfigVal::Get("SPOUT_SENDER_NAME_RIGHT", std::string("CaveWalls_RightEye"));
     m_receiverRight.SetReceiverName(rightSender.c_str());
+
+    m_openMinVREventConnection = ConfigVal::Get("OPEN_MINVR_EVENT_CONNECTION", true);
+    m_minVRDevName = ConfigVal::Get("MINVR_INPUT_DEVICE_NAME", "SpoutStereoServer");
+    m_port = ConfigVal::Get("MINVR_EVENT_CONNECTION_PORT", 9030);
+    m_readWriteTimeoutMs = ConfigVal::Get("MINVR_EVENT_CONNECTION_READ_WRITE_TIMEOUT_MS", 500);
+
+    m_quitOnEsc = ConfigVal::Get("QUIT_ON_ESC", true);
 }
 
 Game::~Game() {
@@ -271,6 +282,15 @@ void Game::Initialize(HWND window)
     delete[] texBytesRight;
 
 
+    m_keyboard = std::make_unique<Keyboard>();
+    m_mouse = std::make_unique<Mouse>();
+    m_mouse->SetWindow(window);
+
+    if (m_openMinVREventConnection) {
+        MinVR3Net::Init();
+        MinVR3Net::CreateListener(m_port, &m_listenerFd);
+    }
+
     // Change the timer settings if you want something other than the default variable timestep mode.
     // e.g. for 60 FPS fixed timestep update logic, call:
     /*
@@ -373,6 +393,8 @@ void Game::CreateDevice()
     }
 
     // TODO: Initialize device dependent objects here (independent of window size).
+    m_font = std::make_unique<SpriteFont>(m_d3dDevice.Get(), L"CourierNew-32.spritefont");
+    m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get());
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
@@ -481,6 +503,8 @@ void Game::CreateOrUpdateWindowSpecificResources()
 void Game::OnDeviceLost()
 {
     ResetDevice();
+    m_font.reset();
+    m_spriteBatch.reset();
 }
 
 void Game::ResetDevice()
@@ -535,12 +559,153 @@ void Game::Tick()
     Render();
 }
 
+
+void Game::PollKeyUpDownEvent(DirectX::Keyboard::Keys keyId, const std::string &keyName, std::vector<VREvent*>* eventList)
+{
+    if (m_keyboardStateTracker.IsKeyPressed(keyId)) {
+        eventList->push_back(new VREvent(m_minVRDevName + "/Keyboard/" + keyName + " DOWN"));
+    }
+    if (m_keyboardStateTracker.released.W) {
+        eventList->push_back(new VREvent(m_minVRDevName + "/Keyboard/" + keyName + " UP"));
+    }
+}
+
+
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
+    m_keyboardStateTracker.Update(m_keyboard->GetState());
+    m_mouseStateTracker.Update(m_mouse->GetState());
+
+    if ((m_quitOnEsc) && (m_keyboardStateTracker.pressed.Escape)) {
+        ExitGame();
+    }
+
+    if (m_openMinVREventConnection) {
+        // Accept new connections from any clients trying to connect
+        while (MinVR3Net::IsReadyToRead(&m_listenerFd)) {
+            SOCKET newClientFd;
+            if (MinVR3Net::TryAcceptConnection(m_listenerFd, &newClientFd)) {
+                m_clientFds.push_back(newClientFd);
+                m_clientDescs.push_back(MinVR3Net::GetAddressAndPort(newClientFd));
+            }
+        }
+
+        // Convert input events from DirectX to MinVR VREvents
+        std::vector<VREvent*> events;
+        if ((m_mouseStateTracker.GetLastState().x != m_mouse->GetState().x) ||
+            (m_mouseStateTracker.GetLastState().y != m_mouse->GetState().y)) {
+            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Position", m_mouse->GetState().x, m_mouse->GetState().y));
+        }
+        if (m_mouseStateTracker.leftButton == m_mouseStateTracker.PRESSED) {
+            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Left DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
+        }
+        if (m_mouseStateTracker.leftButton == m_mouseStateTracker.RELEASED) {
+            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Left UP", m_mouse->GetState().x, m_mouse->GetState().y));
+        }
+        if (m_mouseStateTracker.middleButton == m_mouseStateTracker.PRESSED) {
+            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Middle DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
+        }
+        if (m_mouseStateTracker.middleButton == m_mouseStateTracker.RELEASED) {
+            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Middle UP", m_mouse->GetState().x, m_mouse->GetState().y));
+        }
+        if (m_mouseStateTracker.rightButton == m_mouseStateTracker.PRESSED) {
+            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Right DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
+        }
+        if (m_mouseStateTracker.rightButton == m_mouseStateTracker.RELEASED) {
+            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Right UP", m_mouse->GetState().x, m_mouse->GetState().y));
+        }
+
+        PollKeyUpDownEvent(Keyboard::Keys::A, "A", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::B, "B", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::C, "C", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D, "D", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::E, "E", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::F, "F", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::G, "G", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::H, "H", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::I, "I", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::J, "J", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::K, "K", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::L, "L", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::M, "M", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::N, "N", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::O, "O", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::P, "P", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Q, "Q", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::R, "R", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::S, "S", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::T, "T", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::U, "U", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::V, "V", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::W, "W", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::X, "X", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Y, "Y", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Z, "Z", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D0, "0", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D1, "1", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D2, "2", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D3, "3", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D4, "4", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D5, "5", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D6, "6", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D7, "7", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D8, "8", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::D9, "9", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Space, "Space", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Enter, "Enter", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Left, "LeftArrow", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Right, "RightArrow", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Up, "UpArrow", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Down, "DownArrow", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::OemComma, "Comma", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::OemPeriod, "Period", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::LeftShift, "LeftShift", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::RightShift, "RightShift", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::LeftAlt, "LeftAlt", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::RightAlt, "RightAlt", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::LeftControl, "LeftControl", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::RightControl, "RightControl", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Tab, "Tab", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Delete, "Delete", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::OemPlus, "Plus", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::OemMinus, "Minus", &events);
+        PollKeyUpDownEvent(Keyboard::Keys::Escape, "Esc", &events);
+
+
+        std::vector<SOCKET> disconnectedFds;
+        for (int j = 0; j < m_clientFds.size(); j++) {
+            int e = 0;
+            bool success = true;
+            while ((e < events.size()) && (success)) {
+                success = MinVR3Net::SendVREvent(&m_clientFds[j], *(events[e]), m_readWriteTimeoutMs);
+                e++;
+            }
+            if (!success) {
+                // If there was a problem sending, then assume this client disconnected
+                disconnectedFds.push_back(m_clientFds[j]);
+            }
+        }
+
+        // Remove any disconnected clients from the list
+        for (int i = 0; i < disconnectedFds.size(); i++) {
+            auto it = std::find(m_clientFds.begin(), m_clientFds.end(), disconnectedFds[i]);
+            if (it != m_clientFds.end()) {
+                int index = it - m_clientFds.begin();
+                std::cout << "Dropped connection from " << m_clientDescs[index] << std::endl;
+                // officially close the socket
+                MinVR3Net::CloseSocket(&disconnectedFds[i]);
+                // remove the client from both lists
+                m_clientFds.erase(m_clientFds.begin() + index);
+                m_clientDescs.erase(m_clientDescs.begin() + index);
+            }
+        }
+    }
+
+
     //float elapsedTime = float(timer.GetElapsedSeconds());
 
-    // --- LEFT ---
+    // --- LEFT TEXTURE SPOUT CONNECTION ---
 
     // Receive a new texture
     if (m_receiverLeft.ReceiveTexture()) {
@@ -590,7 +755,7 @@ void Game::Update(DX::StepTimer const& timer)
     }
 
 
-    // --- RIGHT ---
+    // --- RIGHT TEXTURE SPOUT CONNECTION ---
 
     // Receive a new texture
     if (m_receiverRight.ReceiveTexture()) {
@@ -638,6 +803,7 @@ void Game::Update(DX::StepTimer const& timer)
             }
         }
     }
+
 }
 
 // Draws the scene.
@@ -666,25 +832,45 @@ void Game::Render()
     }
     m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
     m_d3dContext->Draw(4, 0);
+
+
+    if (!m_receivedTextureViewLeft) {
+        m_spriteBatch->Begin();
+        std::string leftSender = ConfigVal::Get("SPOUT_SENDER_NAME_LEFT", std::string("CaveWalls_LeftEye"));
+        std::wstring leftSenderW(leftSender.length(), L' ');
+        std::copy(leftSender.begin(), leftSender.end(), leftSenderW.begin());
+        std::wstring output = std::wstring(L"Left Eye: ") + leftSenderW;
+        Vector2 origin = m_font->MeasureString(output.c_str()) / 2.f;
+        Vector2 pos(origin.x, origin.y);
+        m_font->DrawString(m_spriteBatch.get(), output.c_str(), pos, Colors::White, 0.f, origin);
+        m_spriteBatch->End();
+    }
     
+
     // -- RIGHT EYE --
     
     m_d3dContext->OMSetRenderTargets(1, m_renderTargetViewRight.GetAddressOf(), nullptr);
     m_d3dContext->ClearRenderTargetView(m_renderTargetViewRight.Get(), Colors::Blue);
-
-    //m_d3dContext->RSSetViewports(1, &m_viewport);
-    //m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    //m_d3dContext->VSSetShader(m_vertexShader, nullptr, 0);
-    //m_d3dContext->PSSetShader(m_pixelShader, nullptr, 0);
     if (m_receivedTextureViewRight) {
         m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
     }
     else {
         m_d3dContext->PSSetShaderResources(0, 1, &m_textureViewRight);
     }
-    //m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
     m_d3dContext->Draw(4, 0);
     
+    if (!m_receivedTextureViewRight) {
+        m_spriteBatch->Begin();
+        std::string rightSender = ConfigVal::Get("SPOUT_SENDER_NAME_RIGHT", std::string("CaveWalls_RightEye"));
+        std::wstring rightSenderW(rightSender.length(), L' ');
+        std::copy(rightSender.begin(), rightSender.end(), rightSenderW.begin());
+        std::wstring output = std::wstring(L"Right Eye: ") + rightSenderW;
+        Vector2 origin = m_font->MeasureString(output.c_str()) / 2.f;
+        Vector2 pos(origin.x, 4 * origin.y);
+        m_font->DrawString(m_spriteBatch.get(), output.c_str(), pos, Colors::White, 0.f, origin);
+        m_spriteBatch->End();
+    }
+
     Present();
 }
 
@@ -710,6 +896,8 @@ void Game::Present()
 // Message handlers
 void Game::OnActivated()
 {
+    m_keyboardStateTracker.Reset();
+    m_mouseStateTracker.Reset();
     // TODO: Game is becoming active window.
 }
 
@@ -726,6 +914,8 @@ void Game::OnSuspending()
 void Game::OnResuming()
 {
     m_timer.ResetElapsedTime();
+    m_keyboardStateTracker.Reset();
+    m_mouseStateTracker.Reset();
 
     // TODO: Game is being power-resumed (or returning from minimize).
 }

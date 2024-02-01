@@ -83,8 +83,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
+    <None Include="packages.config" />
+    <None Include="CourierNew-32.spritefont" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="frontwall-stereowindow.txt" />
+    <Text Include="spout-stereo-config-ivlab-cave-frontwall.txt" />
+    <Text Include="spout-stereo-config-ivlab-cave-tophalf.txt" />
+    <Text Include="spout-stereo-config-ivlab-cave-bottomhalf.txt" />
+    <Text Include="spout-stereo-config-ivlab-cave.txt" />
   </ItemGroup>
 </Project>
