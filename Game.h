@@ -91,10 +91,12 @@ private:
     spoutDX m_receiverLeft;
     ID3D11Texture2D* m_receivedTextureLeft = nullptr;
     ID3D11ShaderResourceView* m_receivedTextureViewLeft = nullptr;
+    std::string m_senderNameLeft;
 
     spoutDX m_receiverRight;
     ID3D11Texture2D* m_receivedTextureRight = nullptr;
     ID3D11ShaderResourceView* m_receivedTextureViewRight = nullptr;
+    std::string m_senderNameRight;
 
     bool m_inStandbyMode;
 
@@ -108,7 +110,6 @@ private:
     DirectX::Mouse::ButtonStateTracker m_mouseStateTracker;
 
     bool m_openMinVREventConnection;
-    std::string m_minVRDevName;
     int m_port;
     int m_readWriteTimeoutMs;
     SOCKET m_listenerFd;

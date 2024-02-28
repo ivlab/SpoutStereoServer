@@ -5,6 +5,7 @@
 /* TODO
 * test fullscreen and sync and performance with Unity apps
 * test minvr connection for events
+* add data file search feature similar to MinGfx
 * install in V
 */
 
@@ -84,8 +85,7 @@ Game::Game() noexcept :
     m_openMinVREventConnection(true),
     m_port(9030),
     m_readWriteTimeoutMs(500),
-    m_quitOnEsc(true),
-    m_minVRDevName("SpoutStereoServer")
+    m_quitOnEsc(true)
 {
 
     // Get command line args in the silly Windows way:
@@ -143,13 +143,12 @@ Game::Game() noexcept :
     m_outputWidth = ConfigVal::Get("WINDOW_WIDTH", 1280);
     m_outputHeight = ConfigVal::Get("WINDOW_HEIGHT", 1280);
 
-    std::string leftSender = ConfigVal::Get("SPOUT_SENDER_NAME_LEFT", std::string("CaveWalls_LeftEye"));
-    m_receiverLeft.SetReceiverName(leftSender.c_str());
-    std::string rightSender = ConfigVal::Get("SPOUT_SENDER_NAME_RIGHT", std::string("CaveWalls_RightEye"));
-    m_receiverRight.SetReceiverName(rightSender.c_str());
+    m_senderNameLeft = ConfigVal::Get("SPOUT_SENDER_NAME_LEFT", std::string("CaveWalls_LeftEye"));
+    m_receiverLeft.SetReceiverName(m_senderNameLeft.c_str());
+    m_senderNameRight = ConfigVal::Get("SPOUT_SENDER_NAME_RIGHT", std::string("CaveWalls_RightEye"));
+    m_receiverRight.SetReceiverName(m_senderNameRight.c_str());
 
     m_openMinVREventConnection = ConfigVal::Get("OPEN_MINVR_EVENT_CONNECTION", true);
-    m_minVRDevName = ConfigVal::Get("MINVR_INPUT_DEVICE_NAME", "SpoutStereoServer");
     m_port = ConfigVal::Get("MINVR_EVENT_CONNECTION_PORT", 9030);
     m_readWriteTimeoutMs = ConfigVal::Get("MINVR_EVENT_CONNECTION_READ_WRITE_TIMEOUT_MS", 500);
 
@@ -563,10 +562,10 @@ void Game::Tick()
 void Game::PollKeyUpDownEvent(DirectX::Keyboard::Keys keyId, const std::string &keyName, std::vector<VREvent*>* eventList)
 {
     if (m_keyboardStateTracker.IsKeyPressed(keyId)) {
-        eventList->push_back(new VREvent(m_minVRDevName + "/Keyboard/" + keyName + " DOWN"));
+        eventList->push_back(new VREvent("Keyboard/" + keyName + "/Down"));
     }
     if (m_keyboardStateTracker.released.W) {
-        eventList->push_back(new VREvent(m_minVRDevName + "/Keyboard/" + keyName + " UP"));
+        eventList->push_back(new VREvent("Keyboard/" + keyName + "/Up"));
     }
 }
 
@@ -578,7 +577,10 @@ void Game::Update(DX::StepTimer const& timer)
     m_mouseStateTracker.Update(m_mouse->GetState());
 
     if ((m_quitOnEsc) && (m_keyboardStateTracker.pressed.Escape)) {
-        ExitGame();
+        // Minimize the window
+        ShowWindow(m_window, SW_MINIMIZE);
+
+        //ExitGame();
     }
 
     if (m_openMinVREventConnection) {
@@ -595,25 +597,25 @@ void Game::Update(DX::StepTimer const& timer)
         std::vector<VREvent*> events;
         if ((m_mouseStateTracker.GetLastState().x != m_mouse->GetState().x) ||
             (m_mouseStateTracker.GetLastState().y != m_mouse->GetState().y)) {
-            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Position", m_mouse->GetState().x, m_mouse->GetState().y));
+            events.push_back(new VREventVector2("Mouse/Position", m_mouse->GetState().x, m_mouse->GetState().y));
         }
         if (m_mouseStateTracker.leftButton == m_mouseStateTracker.PRESSED) {
-            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Left DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
+            events.push_back(new VREventVector2("Mouse/Left DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
         }
         if (m_mouseStateTracker.leftButton == m_mouseStateTracker.RELEASED) {
-            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Left UP", m_mouse->GetState().x, m_mouse->GetState().y));
+            events.push_back(new VREventVector2("Mouse/Left UP", m_mouse->GetState().x, m_mouse->GetState().y));
         }
         if (m_mouseStateTracker.middleButton == m_mouseStateTracker.PRESSED) {
-            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Middle DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
+            events.push_back(new VREventVector2("Mouse/Middle DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
         }
         if (m_mouseStateTracker.middleButton == m_mouseStateTracker.RELEASED) {
-            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Middle UP", m_mouse->GetState().x, m_mouse->GetState().y));
+            events.push_back(new VREventVector2("Mouse/Middle UP", m_mouse->GetState().x, m_mouse->GetState().y));
         }
         if (m_mouseStateTracker.rightButton == m_mouseStateTracker.PRESSED) {
-            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Right DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
+            events.push_back(new VREventVector2("Mouse/Right DOWN", m_mouse->GetState().x, m_mouse->GetState().y));
         }
         if (m_mouseStateTracker.rightButton == m_mouseStateTracker.RELEASED) {
-            events.push_back(new VREventVector2(m_minVRDevName + "/Mouse/Right UP", m_mouse->GetState().x, m_mouse->GetState().y));
+            events.push_back(new VREventVector2("Mouse/Right UP", m_mouse->GetState().x, m_mouse->GetState().y));
         }
 
         PollKeyUpDownEvent(Keyboard::Keys::A, "A", &events);
@@ -836,9 +838,8 @@ void Game::Render()
 
     if (!m_receivedTextureViewLeft) {
         m_spriteBatch->Begin();
-        std::string leftSender = ConfigVal::Get("SPOUT_SENDER_NAME_LEFT", std::string("CaveWalls_LeftEye"));
-        std::wstring leftSenderW(leftSender.length(), L' ');
-        std::copy(leftSender.begin(), leftSender.end(), leftSenderW.begin());
+        std::wstring leftSenderW(m_senderNameLeft.length(), L' ');
+        std::copy(m_senderNameLeft.begin(), m_senderNameLeft.end(), leftSenderW.begin());
         std::wstring output = std::wstring(L"Left Eye: ") + leftSenderW;
         Vector2 origin = m_font->MeasureString(output.c_str()) / 2.f;
         Vector2 pos(origin.x, origin.y);
@@ -861,9 +862,8 @@ void Game::Render()
     
     if (!m_receivedTextureViewRight) {
         m_spriteBatch->Begin();
-        std::string rightSender = ConfigVal::Get("SPOUT_SENDER_NAME_RIGHT", std::string("CaveWalls_RightEye"));
-        std::wstring rightSenderW(rightSender.length(), L' ');
-        std::copy(rightSender.begin(), rightSender.end(), rightSenderW.begin());
+        std::wstring rightSenderW(m_senderNameRight.length(), L' ');
+        std::copy(m_senderNameRight.begin(), m_senderNameRight.end(), rightSenderW.begin());
         std::wstring output = std::wstring(L"Right Eye: ") + rightSenderW;
         Vector2 origin = m_font->MeasureString(output.c_str()) / 2.f;
         Vector2 pos(origin.x, 4 * origin.y);
