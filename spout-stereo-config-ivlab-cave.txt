@@ -1,5 +1,10 @@
+# This config defines a dual-purpose spout stereo server for the cave.  It listens
+#   for both options below and assumes that only one of the two is active at any time.
+#
+# Option 1: Listens for two big spout textures "CaveWalls_LeftEye" and "CaveWalls_RightEye"
+#   that cover all four walls.
+# Option 2: Listens for four sets of [WALLNAME]_LeftEye and [WALLNAME]_RightEye spout textures.
 
-# All four walls of the IV/LAB CAVE (left, front, right, floor)
 
 WINDOW_WIDTH = 5120
 WINDOW_HEIGHT = 1280
@@ -7,6 +12,48 @@ WINDOW_X = 0
 WINDOW_Y = 0
 WINDOW_TITLEBAR_VISIBLE = 0
 
-SPOUT_SENDER_NAME_LEFT = "CaveWalls_LeftEye"
-SPOUT_SENDER_NAME_RIGHT = "CaveWalls_RightEye"
+OPEN_MINVR_EVENT_CONNECTION = True
+MINVR_EVENT_CONNECTION_PORT = 9030
+MINVR_EVENT_CONNECTION_READ_WRITE_TIMEOUT_MS = 500
 
+
+TILES = "FULLCAVE", "LEFTWALL", "FRONTWALL", "RIGHTWALL", "FLOOR"
+
+# This tile covers all 4 walls of the cave.  No debugging info is drawn because it would
+# cover up any debugging info drawn for the other tiles.
+FULLCAVE_SPOUT_SENDER_NAME_LEFT = "CaveWalls_LeftEye"
+FULLCAVE_SPOUT_SENDER_NAME_RIGHT = "CaveWalls_RightEye"
+FULLCAVE_VIEWPORT_X = 0
+FULLCAVE_VIEWPORT_Y = 0
+FULLCAVE_VIEWPORT_WIDTH = 5120
+FULLCAVE_VIEWPORT_HEIGHT = 1280
+FULLCAVE_NEVER_SHOW_DEBUG_GRAPHICS = true
+
+
+LEFTWALL_SPOUT_SENDER_NAME_LEFT = "LeftWall_LeftEye"
+LEFTWALL_SPOUT_SENDER_NAME_RIGHT = "LeftWall_RightEye"
+LEFTWALL_VIEWPORT_X = 0
+LEFTWALL_VIEWPORT_Y = 0
+LEFTWALL_VIEWPORT_WIDTH = 1280
+LEFTWALL_VIEWPORT_HEIGHT = 1280
+
+FRONTWALL_SPOUT_SENDER_NAME_LEFT = "FrontWall_LeftEye"
+FRONTWALL_SPOUT_SENDER_NAME_RIGHT = "FrontWall_RightEye"
+FRONTWALL_VIEWPORT_X = 1280
+FRONTWALL_VIEWPORT_Y = 0
+FRONTWALL_VIEWPORT_WIDTH = 1280
+FRONTWALL_VIEWPORT_HEIGHT = 1280
+
+RIGHTWALL_SPOUT_SENDER_NAME_LEFT = "RightWall_LeftEye"
+RIGHTWALL_SPOUT_SENDER_NAME_RIGHT = "RightWall_RightEye"
+RIGHTWALL_VIEWPORT_X = 2560
+RIGHTWALL_VIEWPORT_Y = 0
+RIGHTWALL_VIEWPORT_WIDTH = 1280
+RIGHTWALL_VIEWPORT_HEIGHT = 1280
+
+FLOOR_SPOUT_SENDER_NAME_LEFT = "Floor_LeftEye"
+FLOOR_SPOUT_SENDER_NAME_RIGHT = "Floor_RightEye"
+FLOOR_VIEWPORT_X = 3840
+FLOOR_VIEWPORT_Y = 0
+FLOOR_VIEWPORT_WIDTH = 1280
+FLOOR_VIEWPORT_HEIGHT = 1280

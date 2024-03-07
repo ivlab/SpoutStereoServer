@@ -37,6 +37,8 @@
     <ClInclude Include="SpoutDX\SpoutUtils.h">
       <Filter>SpoutDX</Filter>
     </ClInclude>
+    <ClInclude Include="SpoutStereoTile.h" />
+    <ClInclude Include="SpoutStereoWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -63,6 +65,8 @@
     <ClCompile Include="SpoutDX\SpoutUtils.cpp">
       <Filter>SpoutDX</Filter>
     </ClCompile>
+    <ClCompile Include="SpoutStereoTile.cpp" />
+    <ClCompile Include="SpoutStereoWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource.rc" />

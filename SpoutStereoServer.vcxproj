@@ -197,6 +197,8 @@
     <ClInclude Include="SpoutDX\SpoutSenderNames.h" />
     <ClInclude Include="SpoutDX\SpoutSharedMemory.h" />
     <ClInclude Include="SpoutDX\SpoutUtils.h" />
+    <ClInclude Include="SpoutStereoTile.h" />
+    <ClInclude Include="SpoutStereoWindow.h" />
     <ClInclude Include="StepTimer.h" />
   </ItemGroup>
   <ItemGroup>
@@ -250,6 +252,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="SpoutStereoTile.cpp" />
+    <ClCompile Include="SpoutStereoWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource.rc" />
