@@ -148,6 +148,10 @@ SpoutStereoWindow::PollKeyUpDownEvent(DirectX::Keyboard::Keys keyId, const std::
 void
 SpoutStereoWindow::Update()
 {
+    for (auto tile = m_tiles.begin(); tile != m_tiles.end(); tile++) {
+        (*tile)->Update();
+    }
+
     bool receivingFromSpoutThisFrame = receivingFromSpout();
     if (receivingFromSpoutThisFrame && !m_lastReceivingFromSpout) {
         OnSpoutOpenStream();
@@ -161,7 +165,7 @@ SpoutStereoWindow::Update()
     m_keyboardStateTracker.Update(m_keyboard->GetState());
     m_mouseStateTracker.Update(m_mouse->GetState());
 
-    if (m_keyboardStateTracker.pressed.Escape) {
+    if (m_keyboardStateTracker.pressed.OemQuestion) {
         // Minimize the window
         ShowWindow(m_window, SW_MINIMIZE);
     }

@@ -1,34 +1,27 @@
-# This config defines a dual-purpose spout stereo server for the cave.  It listens
-#   for both options below and assumes that only one of the two is active at any time.
-#
-# Option 1: Listens for two big spout textures "CaveWalls_LeftEye" and "CaveWalls_RightEye"
-#   that cover all four walls.
-# Option 2: Listens for four sets of [WALLNAME]_LeftEye and [WALLNAME]_RightEye spout textures.
+# Config File for UMN CAVE Spout Stereo Server
+# Listens for four sets of [WALLNAME]_LeftEye and [WALLNAME]_RightEye spout textures.
 
-
+# A giant, borderless, always-on-top DirectX window that covers all 4 walls of the cave
 WINDOW_WIDTH = 5120
 WINDOW_HEIGHT = 1280
 WINDOW_X = 0
 WINDOW_Y = 0
 WINDOW_TITLEBAR_VISIBLE = 0
 
+# MinVR clients can connect to the spout server to receive keyboard and mouse events
+# using the VREventConnection functionality of MinVR3.
 OPEN_MINVR_EVENT_CONNECTION = True
 MINVR_EVENT_CONNECTION_PORT = 9030
 MINVR_EVENT_CONNECTION_READ_WRITE_TIMEOUT_MS = 500
 
 
-TILES = "FULLCAVE", "LEFTWALL", "FRONTWALL", "RIGHTWALL", "FLOOR"
+# Define four "tiles", which are essentially viewports within the window.
+# Each tile expects to receive two textures from a spout sender, one for the
+# left eye and one for the right.  Those textures are displayed on a quad
+# that completely covers the tile's viewport.
+TILES = "LEFTWALL", "FRONTWALL", "RIGHTWALL", "FLOOR"
 
-# This tile covers all 4 walls of the cave.  No debugging info is drawn because it would
-# cover up any debugging info drawn for the other tiles.
-FULLCAVE_SPOUT_SENDER_NAME_LEFT = "CaveWalls_LeftEye"
-FULLCAVE_SPOUT_SENDER_NAME_RIGHT = "CaveWalls_RightEye"
-FULLCAVE_VIEWPORT_X = 0
-FULLCAVE_VIEWPORT_Y = 0
-FULLCAVE_VIEWPORT_WIDTH = 5120
-FULLCAVE_VIEWPORT_HEIGHT = 1280
-FULLCAVE_NEVER_SHOW_DEBUG_GRAPHICS = true
-
+# Tile-Specific Settings:
 
 LEFTWALL_SPOUT_SENDER_NAME_LEFT = "LeftWall_LeftEye"
 LEFTWALL_SPOUT_SENDER_NAME_RIGHT = "LeftWall_RightEye"
