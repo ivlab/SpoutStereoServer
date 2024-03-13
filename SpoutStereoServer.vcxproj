@@ -320,8 +320,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="CourierNew-32.spritefont" />
+    <None Include="install-for-umncave.sh" />
     <None Include="packages.config" />
     <None Include="README.md" />
+    <None Include="SpoutStereoServer-UMNCave.bat" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="spout-stereo-config-ivlab-cave-bottomhalf.txt" />

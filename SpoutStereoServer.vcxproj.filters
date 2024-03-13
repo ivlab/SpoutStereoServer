@@ -89,6 +89,8 @@
     <None Include="README.md" />
     <None Include="packages.config" />
     <None Include="CourierNew-32.spritefont" />
+    <None Include="install-for-umncave.sh" />
+    <None Include="SpoutStereoServer-UMNCave.bat" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="spout-stereo-config-ivlab-cave-frontwall.txt" />
