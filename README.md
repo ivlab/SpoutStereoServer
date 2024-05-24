@@ -1,5 +1,8 @@
 # SpoutStereoServer
 
+This program helps to render graphics for tiled QuadBuffered VR displays from programs that do not support opening QuadBuffered graphics windows.  The approach is generate offscreen textures for the view seen by the left-eye and right-eye and then share these textures with this "stereo server" using the [Spout API](https://spout.zeal.co/) for GPU-enabled, inter-process texture sharing.  This server program will run continuously in a minimized state until a new Spout stream becomes available at which point it maximizes itself to take over the screen and display the graphics.  A config text file is used to define the size of the graphics window, number of tiles, resolution, and other options.  Mouse and keyboard input from the server window can optionally be sent to the application generating the graphics over a MinVR3 Event Connection.
+
+
 ## Install for UMN Cave / required files
 Open Git bash shell
 ```
