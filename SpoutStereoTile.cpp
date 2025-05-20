@@ -35,11 +35,21 @@ SpoutStereoTile::Initialize(const std::string &name, SpoutStereoWindow* parentWi
 	m_viewport = CD3D11_VIEWPORT(x, y, w, h);
 
     // Spout receiver setup
-    m_senderNameLeft = ConfigVal::Get(m_name + "SPOUT_SENDER_NAME_LEFT", std::string(m_name + "_LeftEye"));
-    m_receiverLeft.SetReceiverName(m_senderNameLeft.c_str());
-    
-    m_senderNameRight = ConfigVal::Get(m_name + "SPOUT_SENDER_NAME_RIGHT", std::string(m_name + "_RightEye"));
-    m_receiverRight.SetReceiverName(m_senderNameRight.c_str());
+    if (m_parentWindow->stereo()) {
+        m_senderNameLeft = ConfigVal::Get(m_name + "SPOUT_SENDER_NAME_LEFT", std::string(m_name + "_LeftEye"));
+        m_receiverLeft.SetReceiverName(m_senderNameLeft.c_str());
+
+        m_senderNameRight = ConfigVal::Get(m_name + "SPOUT_SENDER_NAME_RIGHT", std::string(m_name + "_RightEye"));
+        m_receiverRight.SetReceiverName(m_senderNameRight.c_str());
+    }
+    else if (ConfigVal::Contains(m_name + "SPOUT_SENDER_NAME")) {
+        m_senderNameLeft = ConfigVal::Get(m_name + "SPOUT_SENDER_NAME", std::string(m_name));
+        m_receiverLeft.SetReceiverName(m_senderNameLeft.c_str());
+    }
+    else {
+        m_senderNameLeft = ConfigVal::Get(m_name + "SPOUT_SENDER_NAME_LEFT", std::string(m_name + "_LeftEye"));
+        m_receiverLeft.SetReceiverName(m_senderNameLeft.c_str());
+    }
 
     // configure the default display when no spout source is detected
     m_spoutLabelX = ConfigVal::Get(m_name + "SPOUT_LABEL_X", 0);
@@ -60,8 +70,10 @@ SpoutStereoTile::CreateDeviceResources(Microsoft::WRL::ComPtr<ID3D11Device> d3dD
         DX::ThrowIfFailed(0);
     }
 
-    if (!m_receiverRight.OpenDirectX11(m_d3dDevice.Get())) {
-        DX::ThrowIfFailed(0);
+    if (m_parentWindow->stereo()) {
+        if (!m_receiverRight.OpenDirectX11(m_d3dDevice.Get())) {
+            DX::ThrowIfFailed(0);
+        }
     }
 
     // Create left and right default textures to use with testing and/or when no 
@@ -74,7 +86,11 @@ SpoutStereoTile::CreateDeviceResources(Microsoft::WRL::ComPtr<ID3D11Device> d3dD
     int texBytesPerRow = texNumChannels * texWidth;
 
     unsigned char* texBytesLeft = new unsigned char[texNumBytes];
-    unsigned char* texBytesRight = new unsigned char[texNumBytes];
+
+    unsigned char* texBytesRight;
+    if (m_parentWindow->stereo()) {
+        texBytesRight = new unsigned char[texNumBytes];
+    }
     for (int i = 0; i < texNumPixels; i++) {
         float a = (float)i / (float)(texNumPixels - 1);
 
@@ -85,10 +101,12 @@ SpoutStereoTile::CreateDeviceResources(Microsoft::WRL::ComPtr<ID3D11Device> d3dD
         texBytesLeft[i * texNumChannels + 3] = (unsigned char)255;  // alpha
 
         // right eye shows a blue to gray gradient top to bottom
-        texBytesRight[i * texNumChannels + 0] = (unsigned char)128;  // red
-        texBytesRight[i * texNumChannels + 1] = (unsigned char)128;  // green
-        texBytesRight[i * texNumChannels + 2] = (unsigned char)128 + (unsigned char)std::roundf(127.0f * (1.0f - a));  // blue
-        texBytesRight[i * texNumChannels + 3] = (unsigned char)255;  // alpha
+        if (m_parentWindow->stereo()) {
+            texBytesRight[i * texNumChannels + 0] = (unsigned char)128;  // red
+            texBytesRight[i * texNumChannels + 1] = (unsigned char)128;  // green
+            texBytesRight[i * texNumChannels + 2] = (unsigned char)128 + (unsigned char)std::roundf(127.0f * (1.0f - a));  // blue
+            texBytesRight[i * texNumChannels + 3] = (unsigned char)255;  // alpha
+        }
     }
 
     // the same desc works for both left and right
@@ -106,10 +124,6 @@ SpoutStereoTile::CreateDeviceResources(Microsoft::WRL::ComPtr<ID3D11Device> d3dD
     textureSubresourceDataLeft.pSysMem = texBytesLeft;
     textureSubresourceDataLeft.SysMemPitch = texBytesPerRow;
 
-    D3D11_SUBRESOURCE_DATA textureSubresourceDataRight = {};
-    textureSubresourceDataRight.pSysMem = texBytesRight;
-    textureSubresourceDataRight.SysMemPitch = texBytesPerRow;
-
     DX::ThrowIfFailed(
         m_d3dDevice->CreateTexture2D(&textureDesc, &textureSubresourceDataLeft, &m_defaultTextureLeft)
     );
@@ -118,18 +132,25 @@ SpoutStereoTile::CreateDeviceResources(Microsoft::WRL::ComPtr<ID3D11Device> d3dD
             m_d3dDevice->CreateShaderResourceView(m_defaultTextureLeft, nullptr, &m_defaultTextureViewLeft)
         );
     }
+    delete[] texBytesLeft;
 
-    DX::ThrowIfFailed(
-        m_d3dDevice->CreateTexture2D(&textureDesc, &textureSubresourceDataRight, &m_defaultTextureRight)
-    );
-    if (m_defaultTextureRight != NULL) {
+
+    if (m_parentWindow->stereo()) {
+        D3D11_SUBRESOURCE_DATA textureSubresourceDataRight = {};
+        textureSubresourceDataRight.pSysMem = texBytesRight;
+        textureSubresourceDataRight.SysMemPitch = texBytesPerRow;
+        
         DX::ThrowIfFailed(
-            m_d3dDevice->CreateShaderResourceView(m_defaultTextureRight, nullptr, &m_defaultTextureViewRight)
+            m_d3dDevice->CreateTexture2D(&textureDesc, &textureSubresourceDataRight, &m_defaultTextureRight)
         );
+        if (m_defaultTextureRight != NULL) {
+            DX::ThrowIfFailed(
+                m_d3dDevice->CreateShaderResourceView(m_defaultTextureRight, nullptr, &m_defaultTextureViewRight)
+            );
+        }
+        delete[] texBytesRight;
     }
 
-    delete[] texBytesLeft;
-    delete[] texBytesRight;
 
     // Create Sampler State (Texturing Settings)
     D3D11_SAMPLER_DESC samplerDesc = {};
@@ -156,11 +177,13 @@ SpoutStereoTile::ReleaseDeviceResources()
     m_receivedTextureLeft->Release();
     m_receivedTextureViewLeft->Release();
 
-    m_receiverRight.ReleaseReceiver();
-    m_defaultTextureRight->Release();
-    m_defaultTextureViewRight->Release();
-    m_receivedTextureRight->Release();
-    m_receivedTextureViewRight->Release();
+    if (m_parentWindow->stereo()) {
+        m_receiverRight.ReleaseReceiver();
+        m_defaultTextureRight->Release();
+        m_defaultTextureViewRight->Release();
+        m_receivedTextureRight->Release();
+        m_receivedTextureViewRight->Release();
+    }
 
     m_d3dContext.Reset();
     m_d3dDevice.Reset();
@@ -186,7 +209,7 @@ SpoutStereoTile::Update()
     bool receivedLeft = false;
     bool receivedRight = false;
 
-   // Receive a new texture
+    // Receive a new texture
     if (m_receiverLeft.ReceiveTexture()) {
         receivedLeft = true;
         // The D3D11 device within the SpoutDX class could have changed.
@@ -227,44 +250,46 @@ SpoutStereoTile::Update()
 
 
     // --- RIGHT TEXTURE SPOUT CONNECTION ---
+    if (m_parentWindow->stereo()) {
 
-    // Receive a new texture
-    if (m_receiverRight.ReceiveTexture()) {
-        receivedRight = true;
+        // Receive a new texture
+        if (m_receiverRight.ReceiveTexture()) {
+            receivedRight = true;
 
-        // The D3D11 device within the SpoutDX class could have changed.
-        // If it has switched to use a different sender graphics adapter,
-        // stop receiving the texture and re-initialize the application.
-        if (m_receiverRight.GetAdapterAuto()) {
-            if (m_d3dDevice.Get() != m_receiverRight.GetDX11Device()) {
-                m_requiresDeviceReset = true;
-                return;
+            // The D3D11 device within the SpoutDX class could have changed.
+            // If it has switched to use a different sender graphics adapter,
+            // stop receiving the texture and re-initialize the application.
+            if (m_receiverRight.GetAdapterAuto()) {
+                if (m_d3dDevice.Get() != m_receiverRight.GetDX11Device()) {
+                    m_requiresDeviceReset = true;
+                    return;
+                }
+            }
+            // If the frame is new, then create/update the shader resource view
+            if (m_receiverRight.IsFrameNew()) {
+                // release old view if it exists
+                if (m_receivedTextureViewRight != nullptr) {
+                    m_receivedTextureViewRight->Release();
+                    m_receivedTextureViewRight = nullptr;
+                }
+                // create new view
+                D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+                ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
+                // Match format of the sender
+                shaderResourceViewDesc.Format = m_receiverRight.GetSenderFormat();
+                shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+                shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+                shaderResourceViewDesc.Texture2D.MipLevels = 1;
+                m_d3dDevice->CreateShaderResourceView(m_receiverRight.GetSenderTexture(), &shaderResourceViewDesc, &m_receivedTextureViewRight);
             }
         }
-        // If the frame is new, then create/update the shader resource view
-        if (m_receiverRight.IsFrameNew()) {
-            // release old view if it exists
+        else {
+            // A sender was not found or the connected sender closed
+            // Release the texture resource view so render uses the default texture
             if (m_receivedTextureViewRight != nullptr) {
                 m_receivedTextureViewRight->Release();
                 m_receivedTextureViewRight = nullptr;
             }
-            // create new view
-            D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-            ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
-            // Match format of the sender
-            shaderResourceViewDesc.Format = m_receiverRight.GetSenderFormat();
-            shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-            shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-            shaderResourceViewDesc.Texture2D.MipLevels = 1;
-            m_d3dDevice->CreateShaderResourceView(m_receiverRight.GetSenderTexture(), &shaderResourceViewDesc, &m_receivedTextureViewRight);
-        }
-    }
-    else {
-        // A sender was not found or the connected sender closed
-        // Release the texture resource view so render uses the default texture
-        if (m_receivedTextureViewRight != nullptr) {
-            m_receivedTextureViewRight->Release();
-            m_receivedTextureViewRight = nullptr;
         }
     }
 
@@ -307,22 +332,24 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
 
 
     // -- RIGHT EYE --
-    m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
-    if (m_receivedTextureViewRight) {
-        m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
-        m_d3dContext->Draw(4, 0);
-    }
-    else if (!m_neverShowDebugGraphics && m_showDebugGraphics) {
-        m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewRight);
-        m_d3dContext->Draw(4, 0);
+    if (m_parentWindow->stereo()) {
+        m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
+        if (m_receivedTextureViewRight) {
+            m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
+            m_d3dContext->Draw(4, 0);
+        }
+        else if (!m_neverShowDebugGraphics && m_showDebugGraphics) {
+            m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewRight);
+            m_d3dContext->Draw(4, 0);
 
-        m_parentWindow->fontSpriteBatch()->Begin();
-        std::wstring rightSenderW(m_senderNameRight.length(), L' ');
-        std::copy(m_senderNameRight.begin(), m_senderNameRight.end(), rightSenderW.begin());
-        std::wstring output = rightSenderW; // std::wstring(L"Right Eye: ") + rightSenderW;
-        Vector2 bounds = m_parentWindow->font()->MeasureString(output.c_str()) / 2.f;
-        Vector2 pos(m_spoutLabelX + bounds.x, m_spoutLabelY + 4 * bounds.y);
-        m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
-        m_parentWindow->fontSpriteBatch()->End();
+            m_parentWindow->fontSpriteBatch()->Begin();
+            std::wstring rightSenderW(m_senderNameRight.length(), L' ');
+            std::copy(m_senderNameRight.begin(), m_senderNameRight.end(), rightSenderW.begin());
+            std::wstring output = rightSenderW; // std::wstring(L"Right Eye: ") + rightSenderW;
+            Vector2 bounds = m_parentWindow->font()->MeasureString(output.c_str()) / 2.f;
+            Vector2 pos(m_spoutLabelX + bounds.x, m_spoutLabelY + 4 * bounds.y);
+            m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
+            m_parentWindow->fontSpriteBatch()->End();
+        }
     }
 }

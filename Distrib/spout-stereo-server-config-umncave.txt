@@ -1,0 +1,52 @@
+# Config File for UMN CAVE Spout Stereo Server
+# Listens for four sets of [WALLNAME]_LeftEye and [WALLNAME]_RightEye spout textures.
+
+# A giant, borderless, always-on-top DirectX window that covers all 4 walls of the cave
+WINDOW_WIDTH = 5120
+WINDOW_HEIGHT = 1280
+WINDOW_X = 0
+WINDOW_Y = 0
+WINDOW_TITLEBAR_VISIBLE = 0
+
+# MinVR clients can connect to the spout server to receive keyboard and mouse events
+# using the VREventConnection functionality of MinVR3.
+OPEN_MINVR_EVENT_CONNECTION = True
+MINVR_EVENT_CONNECTION_PORT = 9030
+MINVR_EVENT_CONNECTION_READ_WRITE_TIMEOUT_MS = 500
+
+
+# Define four "tiles", which are essentially viewports within the window.
+# Each tile expects to receive two textures from a spout sender, one for the
+# left eye and one for the right.  Those textures are displayed on a quad
+# that completely covers the tile's viewport.
+TILES = "LEFTWALL", "FRONTWALL", "RIGHTWALL", "FLOOR"
+
+# Tile-Specific Settings:
+
+LEFTWALL_SPOUT_SENDER_NAME_LEFT = "LeftWall_LeftEye"
+LEFTWALL_SPOUT_SENDER_NAME_RIGHT = "LeftWall_RightEye"
+LEFTWALL_VIEWPORT_X = 0
+LEFTWALL_VIEWPORT_Y = 0
+LEFTWALL_VIEWPORT_WIDTH = 1280
+LEFTWALL_VIEWPORT_HEIGHT = 1280
+
+FRONTWALL_SPOUT_SENDER_NAME_LEFT = "FrontWall_LeftEye"
+FRONTWALL_SPOUT_SENDER_NAME_RIGHT = "FrontWall_RightEye"
+FRONTWALL_VIEWPORT_X = 1280
+FRONTWALL_VIEWPORT_Y = 0
+FRONTWALL_VIEWPORT_WIDTH = 1280
+FRONTWALL_VIEWPORT_HEIGHT = 1280
+
+RIGHTWALL_SPOUT_SENDER_NAME_LEFT = "RightWall_LeftEye"
+RIGHTWALL_SPOUT_SENDER_NAME_RIGHT = "RightWall_RightEye"
+RIGHTWALL_VIEWPORT_X = 2560
+RIGHTWALL_VIEWPORT_Y = 0
+RIGHTWALL_VIEWPORT_WIDTH = 1280
+RIGHTWALL_VIEWPORT_HEIGHT = 1280
+
+FLOOR_SPOUT_SENDER_NAME_LEFT = "Floor_LeftEye"
+FLOOR_SPOUT_SENDER_NAME_RIGHT = "Floor_RightEye"
+FLOOR_VIEWPORT_X = 3840
+FLOOR_VIEWPORT_Y = 0
+FLOOR_VIEWPORT_WIDTH = 1280
+FLOOR_VIEWPORT_HEIGHT = 1280

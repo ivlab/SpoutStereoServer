@@ -92,10 +92,4 @@
     <None Include="install-for-umncave.sh" />
     <None Include="SpoutStereoServer-UMNCave.bat" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="spout-stereo-config-ivlab-cave-frontwall.txt" />
-    <Text Include="spout-stereo-config-ivlab-cave-tophalf.txt" />
-    <Text Include="spout-stereo-config-ivlab-cave-bottomhalf.txt" />
-    <Text Include="spout-stereo-config-ivlab-cave.txt" />
-  </ItemGroup>
 </Project>

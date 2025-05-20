@@ -70,6 +70,7 @@ private:
     int m_yPos;
     int m_width;
     int m_height;
+    int m_stereo;
 
     SpoutStereoWindow m_spoutStereoWindow;
 };

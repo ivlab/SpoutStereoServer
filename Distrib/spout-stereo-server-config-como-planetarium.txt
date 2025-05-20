@@ -1,0 +1,27 @@
+
+# Config File for Como Planetarium Spout Stereo Server
+
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 1024
+WINDOW_X = 0
+WINDOW_Y = 0
+WINDOW_TITLEBAR_VISIBLE = 0
+WINDOW_STEREO = 0
+
+
+# MinVR clients can connect to the spout server to receive keyboard and mouse events
+# using the VREventConnection functionality of MinVR3.
+OPEN_MINVR_EVENT_CONNECTION = True
+MINVR_EVENT_CONNECTION_PORT = 9030
+MINVR_EVENT_CONNECTION_READ_WRITE_TIMEOUT_MS = 500
+
+
+# Define one "tile", i.e., viewport within the window.
+TILES = "DOMEVIEW"
+
+# Tile-Specific Settings:
+DOMEVIEW_SPOUT_SENDER_NAME = "DomeView"
+DOMEVIEW_VIEWPORT_X = 0
+DOMEVIEW_VIEWPORT_Y = 0
+DOMEVIEW_VIEWPORT_WIDTH = 1280
+DOMEVIEW_VIEWPORT_HEIGHT = 1024

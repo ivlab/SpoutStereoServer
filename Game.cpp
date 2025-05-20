@@ -128,6 +128,7 @@ Game::Game() noexcept :
     m_yPos = ConfigVal::Get("WINDOW_Y", 0);
     m_width = ConfigVal::Get("WINDOW_WIDTH", 1280);
     m_height = ConfigVal::Get("WINDOW_HEIGHT", 1280);
+    m_stereo = ConfigVal::Get("WINDOW_STEREO", true);
 }
 
 Game::~Game() {
@@ -145,7 +146,7 @@ void Game::GetDefaultSize(int& width, int& height) const noexcept
 void Game::Initialize(HWND window)
 {
     m_window = window;
-    m_spoutStereoWindow.Initialize(window); // blank name because only one window
+    m_spoutStereoWindow.Initialize(window, m_stereo); // blank name because only one window
 
     CreateDevice();
     CreateDeviceResources();
@@ -305,7 +306,7 @@ void Game::CreateWindowResources()
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapChainDesc.Scaling = DXGI_SCALING_NONE; // ASPECT_RATIO_STRETCH;
         swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
-        swapChainDesc.Stereo = TRUE;
+        swapChainDesc.Stereo = m_stereo; // TRUE;
         swapChainDesc.Flags = 0;
 
         DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
@@ -335,15 +336,17 @@ void Game::CreateWindowResources()
         m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewLeftDesc, m_renderTargetViewLeft.ReleaseAndGetAddressOf())
     );
 
-    // Create a descriptor for the right eye view.
-    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewRightDesc(
-        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 1, 1
-    );
+    if (m_stereo) {
+        // Create a descriptor for the right eye view.
+        CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewRightDesc(
+            D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 1, 1
+        );
 
-    // Create a view interface on the rendertarget to use on bind for right eye view.
-    DX::ThrowIfFailed(
-        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewRightDesc, m_renderTargetViewRight.ReleaseAndGetAddressOf())
-    );
+        // Create a view interface on the rendertarget to use on bind for right eye view.
+        DX::ThrowIfFailed(
+            m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewRightDesc, m_renderTargetViewRight.ReleaseAndGetAddressOf())
+        );
+    }
 
     m_spoutStereoWindow.CreateWindowResources();
 }
@@ -355,7 +358,9 @@ void Game::ReleaseWindowResources()
     // Clear the previous window size specific context.
     m_d3dContext->OMSetRenderTargets(0, nullptr, nullptr);
     m_renderTargetViewLeft.Reset();
-    m_renderTargetViewRight.Reset();
+    if (m_stereo) {
+        m_renderTargetViewRight.Reset();
+    }
     m_swapChain.Reset();
     m_d3dContext->Flush();
 }

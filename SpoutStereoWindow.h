@@ -15,7 +15,7 @@ public:
     SpoutStereoWindow();
     virtual ~SpoutStereoWindow();
 
-    void Initialize(HWND window);
+    void Initialize(HWND window, bool stereo);
 
     void CreateDeviceResources(Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice,
                                Microsoft::WRL::ComPtr<ID3D11DeviceContext> d3dContext);
@@ -73,8 +73,13 @@ public:
         }
     }
 
+    bool stereo() {
+        return m_stereo;
+    }
+
 protected:
     HWND m_window;
+    bool m_stereo;
     bool m_lastReceivingFromSpout;
     std::vector<SpoutStereoTile*> m_tiles;
 

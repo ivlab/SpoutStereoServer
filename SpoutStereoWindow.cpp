@@ -22,9 +22,10 @@ SpoutStereoWindow::~SpoutStereoWindow()
 }
 
 void
-SpoutStereoWindow::Initialize(HWND window)
+SpoutStereoWindow::Initialize(HWND window, bool stereo)
 {
 	m_window = window;
+    m_stereo = stereo;
 
 	// create tiles based on config file settings
 	std::vector<std::string> tileNames = ConfigVal::Get("TILES", std::vector<std::string>());
@@ -302,9 +303,11 @@ SpoutStereoWindow::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewLeft.GetAddressOf(), nullptr);
     m_d3dContext->ClearRenderTargetView(renderTargetViewLeft.Get(), Colors::Red);
 
-    // RIGHT EYE
-    m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
-    m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::Blue);
+    if (renderTargetViewRight) {
+        // RIGHT EYE
+        m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
+        m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::Blue);
+    }
 
     for (auto tile = m_tiles.begin(); tile != m_tiles.end(); tile++) {
         (*tile)->Draw(renderTargetViewLeft, renderTargetViewRight);
