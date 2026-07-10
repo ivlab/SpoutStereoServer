@@ -309,6 +309,9 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
     }
 
 
+    // Force the GPU to draw everything for the left eye before we switch to the right.
+    m_d3dContext->Flush();
+
     // -- RIGHT EYE --
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
     // Clear just the viewport area for this tile
