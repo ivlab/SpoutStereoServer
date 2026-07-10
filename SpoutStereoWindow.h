@@ -48,6 +48,10 @@ public:
         return m_spriteBatch;
     }
 
+    DirectX::CommonStates* commonStates() {
+        return m_states.get();
+    }
+
     bool receivingFromSpout() {
         for (auto tile = m_tiles.begin(); tile != m_tiles.end(); tile++) {
             if ((*tile)->receivingFromSpout()) {
@@ -86,6 +90,7 @@ protected:
     ID3D11PixelShader* m_fullscreenPixelShader;
     std::shared_ptr<DirectX::SpriteFont> m_font;
     std::shared_ptr<DirectX::SpriteBatch> m_spriteBatch;
+    std::unique_ptr<DirectX::CommonStates> m_states;
 
     // Window Input
     std::unique_ptr<DirectX::Keyboard> m_keyboard;

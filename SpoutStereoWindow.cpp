@@ -58,6 +58,7 @@ SpoutStereoWindow::CreateDeviceResources(Microsoft::WRL::ComPtr<ID3D11Device> d3
 
     m_font = std::make_unique<SpriteFont>(m_d3dDevice.Get(), L"CourierNew-32.spritefont");
     m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get());
+    m_states = std::make_unique<CommonStates>(m_d3dDevice.Get());
 
     // Create simple shaders for fullscreen quad (these are compiled into header files during the build)
     // Right-click on the .hlsl files and go to Properties to configure this.
@@ -82,6 +83,7 @@ SpoutStereoWindow::ReleaseDeviceResources()
 
     m_font.reset();
     m_spriteBatch.reset();
+    m_states.reset();
     m_d3dContext.Reset();
     m_d3dDevice.Reset();
 }
