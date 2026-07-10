@@ -303,13 +303,18 @@ void Game::CreateWindowResources()
         swapChainDesc.OutputWindow = m_window;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
-        swapChainDesc.Windowed = TRUE;
+        swapChainDesc.Windowed = FALSE; // Must be FALSE to initialize stereo with this API
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
         swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // This flag enables stereo for the older swap chain model.
 
         // Create a SwapChain from a Win32 window.
         DX::ThrowIfFailed(
             dxgiFactory->CreateSwapChain(m_d3dDevice.Get(), &swapChainDesc, m_swapChain.ReleaseAndGetAddressOf())
+        );
+
+        // Now that the swap chain is created and stereo is initialized, switch back to windowed mode.
+        DX::ThrowIfFailed(
+            m_swapChain->SetFullscreenState(FALSE, nullptr)
         );
 
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.
