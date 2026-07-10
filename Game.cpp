@@ -322,14 +322,37 @@ void Game::CreateWindowResources()
     }
 
     // Obtain the backbuffer for this window which will be the final 3D rendertarget.
-    ComPtr<ID3D11Texture2D> backBuffer;
-    DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
+    DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(m_backBuffer.ReleaseAndGetAddressOf())));
 
     // Create a single render target view from the swap chain.
     // The driver will handle stereo separation based on the swap chain's stereo flag.
     DX::ThrowIfFailed(
-        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf())
+        m_d3dDevice->CreateRenderTargetView(m_backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf())
     );
+
+    // Create intermediate textures for left and right eyes
+    D3D11_TEXTURE2D_DESC texDesc = {};
+    m_backBuffer->GetDesc(&texDesc);
+    texDesc.ArraySize = 1; // Not a texture array
+    texDesc.MiscFlags = 0; // Not shared
+
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateTexture2D(&texDesc, nullptr, m_leftEyeTexture.ReleaseAndGetAddressOf())
+    );
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateTexture2D(&texDesc, nullptr, m_rightEyeTexture.ReleaseAndGetAddressOf())
+    );
+
+    // Create render target views for the intermediate textures
+    CD3D11_RENDER_TARGET_VIEW_DESC rtvDesc(D3D11_RTV_DIMENSION_TEXTURE2D, texDesc.Format);
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateRenderTargetView(m_leftEyeTexture.Get(), &rtvDesc, m_leftEyeRTV.ReleaseAndGetAddressOf())
+    );
+    DX::ThrowIfFailed(
+        m_d3dDevice->CreateRenderTargetView(m_rightEyeTexture.Get(), &rtvDesc, m_rightEyeRTV.ReleaseAndGetAddressOf())
+    );
+
+
 
     m_spoutStereoWindow.CreateWindowResources();
 }
@@ -341,6 +364,11 @@ void Game::ReleaseWindowResources()
     // Clear the previous window size specific context.
     m_d3dContext->OMSetRenderTargets(0, nullptr, nullptr);
     m_renderTargetView.Reset();
+    m_backBuffer.Reset();
+    m_leftEyeTexture.Reset();
+    m_rightEyeTexture.Reset();
+    m_leftEyeRTV.Reset();
+    m_rightEyeRTV.Reset();
     m_swapChain.Reset();
     m_d3dContext->Flush();
 }
@@ -394,7 +422,12 @@ void Game::Render()
         return;
     }
 
-    m_spoutStereoWindow.Draw(m_renderTargetView);
+    // Draw the scene to our intermediate textures
+    m_spoutStereoWindow.Draw(m_leftEyeRTV, m_rightEyeRTV);
+
+    // Copy the intermediate textures to the correct slices of the swap chain's back buffer
+    m_d3dContext->CopySubresourceRegion(m_backBuffer.Get(), 0, 0, 0, 0, m_leftEyeTexture.Get(), 0, nullptr);
+    m_d3dContext->CopySubresourceRegion(m_backBuffer.Get(), 1, 0, 0, 0, m_rightEyeTexture.Get(), 0, nullptr);
 
     Present();
 }

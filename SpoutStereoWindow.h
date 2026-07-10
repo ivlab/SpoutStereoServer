@@ -31,7 +31,7 @@ public:
     void PollKeyUpDownEvent(DirectX::Keyboard::Keys keyId, const std::string& keyName, std::vector<VREvent*>* eventList);
 
     void Update();
-    void Draw(Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView);
+    void Draw(Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetViewLeft, Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetViewRight);
 
     ID3D11VertexShader* fullscreenVertexShader() {
         return m_fullscreenVertexShader;
