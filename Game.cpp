@@ -295,61 +295,50 @@ void Game::CreateWindowResources()
         // Identify the physical adapter (GPU or card) this device is running on and get the factory.
         ComPtr<IDXGIAdapter> dxgiAdapter;
         DX::ThrowIfFailed(dxgiDevice->GetAdapter(dxgiAdapter.GetAddressOf()));
-        ComPtr<IDXGIFactory> dxgiFactory;
+        ComPtr<IDXGIFactory2> dxgiFactory;
         DX::ThrowIfFailed(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
 
-        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-        swapChainDesc.BufferCount = backBufferCount;
-        swapChainDesc.BufferDesc.Width = backBufferWidth;
-        swapChainDesc.BufferDesc.Height = backBufferHeight;
-        swapChainDesc.BufferDesc.Format = backBufferFormat;
-        // This is the critical part for windowed stereo with the bitblt model.
-        swapChainDesc.BufferDesc.RefreshRate.Numerator = 120;
-        swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.OutputWindow = m_window;
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+        swapChainDesc.Width = backBufferWidth;
+        swapChainDesc.Height = backBufferHeight;
+        swapChainDesc.Format = backBufferFormat;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
-        swapChainDesc.Windowed = TRUE;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-        swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // This flag enables stereo for this model.
+        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        swapChainDesc.BufferCount = backBufferCount;
+        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+        swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+        swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+        swapChainDesc.Stereo = TRUE;
+        swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
         // Create a SwapChain from a Win32 window.
-        DX::ThrowIfFailed(dxgiFactory->CreateSwapChain(m_d3dDevice.Get(), &swapChainDesc, m_swapChain.ReleaseAndGetAddressOf()));
+        DX::ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(m_d3dDevice.Get(), m_window, &swapChainDesc,
+            nullptr, nullptr, m_swapChain.ReleaseAndGetAddressOf()));
 
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.
         DX::ThrowIfFailed(dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER));
     }
 
     // Obtain the backbuffer for this window which will be the final 3D rendertarget.
-    DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(m_backBuffer.ReleaseAndGetAddressOf())));
+    ComPtr<ID3D11Texture2D> backBuffer;
+    DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
 
-    // Create a single render target view from the swap chain.
-    // The driver will handle stereo separation based on the swap chain's stereo flag.
-    DX::ThrowIfFailed(
-        m_d3dDevice->CreateRenderTargetView(m_backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf())
+    // Create a descriptor for the left eye view.
+    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewLeftDesc(
+        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, backBufferFormat, 0, 0, 1
     );
-
-    // Create intermediate textures for left and right eyes
-    D3D11_TEXTURE2D_DESC texDesc = {};
-    m_backBuffer->GetDesc(&texDesc);
-    texDesc.ArraySize = 1; // Not a texture array
-    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE; // Use NT Handles for robust stereo compatibility
-
+    // Create a view interface on the rendertarget to use on bind for mono or left eye view.
     DX::ThrowIfFailed(
-        m_d3dDevice->CreateTexture2D(&texDesc, nullptr, m_leftEyeTexture.ReleaseAndGetAddressOf())
+        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewLeftDesc, m_renderTargetViewLeft.ReleaseAndGetAddressOf())
     );
-    DX::ThrowIfFailed(
-        m_d3dDevice->CreateTexture2D(&texDesc, nullptr, m_rightEyeTexture.ReleaseAndGetAddressOf())
+    // Create a descriptor for the right eye view.
+    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewRightDesc(
+        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, backBufferFormat, 0, 1, 1
     );
-
-    // Create render target views for the intermediate textures
-    CD3D11_RENDER_TARGET_VIEW_DESC rtvDesc(D3D11_RTV_DIMENSION_TEXTURE2D, texDesc.Format);
+    // Create a view interface on the rendertarget to use on bind for right eye view.
     DX::ThrowIfFailed(
-        m_d3dDevice->CreateRenderTargetView(m_leftEyeTexture.Get(), &rtvDesc, m_leftEyeRTV.ReleaseAndGetAddressOf())
-    );
-    DX::ThrowIfFailed(
-        m_d3dDevice->CreateRenderTargetView(m_rightEyeTexture.Get(), &rtvDesc, m_rightEyeRTV.ReleaseAndGetAddressOf())
+        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewRightDesc, m_renderTargetViewRight.ReleaseAndGetAddressOf())
     );
 
 
@@ -363,12 +352,8 @@ void Game::ReleaseWindowResources()
 
     // Clear the previous window size specific context.
     m_d3dContext->OMSetRenderTargets(0, nullptr, nullptr);
-    m_renderTargetView.Reset();
-    m_backBuffer.Reset();
-    m_leftEyeTexture.Reset();
-    m_rightEyeTexture.Reset();
-    m_leftEyeRTV.Reset();
-    m_rightEyeRTV.Reset();
+    m_renderTargetViewLeft.Reset();
+    m_renderTargetViewRight.Reset();
     m_swapChain.Reset();
     m_d3dContext->Flush();
 }
@@ -422,12 +407,7 @@ void Game::Render()
         return;
     }
 
-    // Draw the scene to our intermediate textures
-    m_spoutStereoWindow.Draw(m_leftEyeRTV, m_rightEyeRTV);
-
-    // Copy the intermediate textures to the correct slices of the swap chain's back buffer
-    m_d3dContext->CopySubresourceRegion(m_backBuffer.Get(), 0, 0, 0, 0, m_leftEyeTexture.Get(), 0, nullptr);
-    m_d3dContext->CopySubresourceRegion(m_backBuffer.Get(), 1, 0, 0, 0, m_rightEyeTexture.Get(), 0, nullptr);
+    m_spoutStereoWindow.Draw(m_renderTargetViewLeft, m_renderTargetViewRight);
 
     Present();
 }
@@ -437,8 +417,10 @@ void Game::Present()
 {
     // The first argument instructs DXGI to block until VSync, putting the application
     // to sleep until the next VSync. This ensures we don't waste any cycles rendering
-    // frames that will never be displayed to the screen.
-    HRESULT hr = m_swapChain->Present(1, 0);
+    // frames that will never be displayed to the screen. With ALLOW_TEARING, we use 0 for the first arg.
+    HRESULT hr = m_swapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
+
+    // HRESULT hr = m_swapChain->Present(1, 0);
 
     // If the device was reset we must completely reinitialize the renderer.
     if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
