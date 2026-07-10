@@ -157,8 +157,20 @@ void Game::Initialize(HWND window, bool fullscreen)
     CreateDevice();
     CreateDeviceResources();
 
-    // Trigger the first size-dependent setup.
-    OnWindowSizeChanged(m_width, m_height);
+    // Create the swapchain and other window-sized resources.
+    CreateWindowResources();
+
+    // SetFullscreenState will cause a WM_SIZE message to be sent to the window.
+    // We must process it now, before we attempt to Present the first frame.
+    // This will call OnWindowSizeChanged, which will correctly resize the buffers.
+    MSG msg = {};
+    while (PeekMessageW(&msg, m_window, 0, 0, PM_REMOVE))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    m_spoutStereoWindow.ResetInputTrackers();
 
     if (fullscreen) {
         // This is already set in Main.cpp, but we can ensure it here.
@@ -272,19 +284,9 @@ void Game::CreateWindowResources()
     constexpr UINT backBufferCount = 2;
 
     // If the swap chain already exists, resize it, otherwise create one.
-    if (m_swapChain) { // This block is now only for resizing.
-        HRESULT hr = m_swapChain->ResizeBuffers(backBufferCount, backBufferWidth, backBufferHeight, backBufferFormat, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-        if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
-            // If the device was removed for any reason, a new device and swap chain will need to be created.
-            OnDeviceLost();
-            // Everything is set up now. Do not continue execution of this method. OnDeviceLost will reenter this method 
-            // and correctly set up the new device.
-            return;
-        }
-        else {
-            DX::ThrowIfFailed(hr);
-        }
-    } else { // This block is now only for initial creation.
+    if (m_swapChain) {
+        // Resizing is handled in OnWindowSizeChanged. This function is for creation only.
+    } else {
         // First, retrieve the underlying DXGI Device from the D3D Device.
         ComPtr<IDXGIDevice1> dxgiDevice;
         DX::ThrowIfFailed(m_d3dDevice.As(&dxgiDevice));
@@ -322,7 +324,7 @@ void Game::CreateWindowResources()
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.
         DX::ThrowIfFailed(dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER));
 
-        // Now that the swap chain is created, enter exclusive fullscreen mode.
+        // Enter exclusive fullscreen mode. This will trigger a WM_SIZE message.
         DX::ThrowIfFailed(m_swapChain->SetFullscreenState(TRUE, dxgiOutput.Get()));
     }
 
@@ -489,24 +491,30 @@ void Game::OnWindowSizeChanged(int width, int height)
     m_width = (std::max)(width, 1);
     m_height = (std::max)(height, 1);
 
-    if (m_swapChain)
-    {
-        // Release resources that are tied to the swap chain.
-        m_renderTargetViewLeft.Reset();
-        m_renderTargetViewRight.Reset();
-        m_d3dContext->Flush();
+    // This is the primary resize handler.
+    if (!m_swapChain)
+        return;
 
-        // Now, resize the swap chain. This will invalidate the back buffer.
-        HRESULT hr = m_swapChain->ResizeBuffers(0, m_width, m_height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-        if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
-            OnDeviceLost();
-            return;
-        }
-        else {
-            DX::ThrowIfFailed(hr);
-        }
+    // Release resources that are tied to the swap chain's size.
+    m_renderTargetViewLeft.Reset();
+    m_renderTargetViewRight.Reset();
+    m_d3dContext->Flush();
+
+    // Now, resize the swap chain. This will invalidate the back buffer.
+    HRESULT hr = m_swapChain->ResizeBuffers(0, m_width, m_height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+    if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
+        OnDeviceLost();
+        return;
+    }
+    else {
+        DX::ThrowIfFailed(hr);
     }
 
-    // Recreate the render target views from the new back buffer.
-    CreateWindowResources();
+    // After resizing, we need to re-create the render target views from the new back buffer.
+    ComPtr<ID3D11Texture2D> backBuffer;
+    DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
+    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewLeftDesc(D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 0, 1);
+    DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewLeftDesc, m_renderTargetViewLeft.ReleaseAndGetAddressOf()));
+    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewRightDesc(D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 1, 1);
+    DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewRightDesc, m_renderTargetViewRight.ReleaseAndGetAddressOf()));
 }
