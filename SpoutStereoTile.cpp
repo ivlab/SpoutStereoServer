@@ -281,57 +281,14 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
 
     // -- LEFT EYE --
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewLeft.GetAddressOf(), nullptr);
-    // Clear just the viewport area for this tile
-    m_d3dContext->ClearRenderTargetView(renderTargetViewLeft.Get(), Colors::CornflowerBlue);
-
-
-    m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    m_d3dContext->VSSetShader(m_parentWindow->fullscreenVertexShader(), nullptr, 0);
-    m_d3dContext->PSSetShader(m_parentWindow->fullscreenPixelShader(), nullptr, 0);
-    m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
-
-    if (m_receivedTextureViewLeft) {
-        m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewLeft);
-        m_d3dContext->Draw(4, 0);
-    }
-    else if (!m_neverShowDebugGraphics && m_showDebugGraphics) {
-        m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewLeft);
-        m_d3dContext->Draw(4, 0);
-
-        //// Tell SpriteBatch to draw immediately and use an opaque blend state.
-        //// It will automatically save and restore the previous state.
-        //m_parentWindow->fontSpriteBatch()->Begin(SpriteSortMode_Immediate, m_parentWindow->commonStates()->Opaque());
-        //std::wstring leftSenderW(m_senderNameLeft.length(), L' ');
-        //std::copy(m_senderNameLeft.begin(), m_senderNameLeft.end(), leftSenderW.begin());
-        //std::wstring output = leftSenderW; // std::wstring(L"Left Eye: ") + leftSenderW;
-        //Vector2 bounds = m_parentWindow->font()->MeasureString(output.c_str()) / 2.f;
-        //Vector2 pos(m_spoutLabelX + bounds.x, m_spoutLabelY + bounds.y);
-        //m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
-        //m_parentWindow->fontSpriteBatch()->End();
-    }
+    // Clear the left eye to Red
+    m_d3dContext->ClearRenderTargetView(renderTargetViewLeft.Get(), Colors::Red);
 
     // -- RIGHT EYE --
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
-    // Clear just the viewport area for this tile
-    m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::CornflowerBlue);
+    // Clear the right eye to Blue
+    m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::Blue);
 
-    if (m_receivedTextureViewRight) {
-        m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
-        m_d3dContext->Draw(4, 0);
-    }
-    else if (!m_neverShowDebugGraphics && m_showDebugGraphics) {
-        m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewRight);
-        m_d3dContext->Draw(4, 0);
-
-        //// Tell SpriteBatch to draw immediately and use an opaque blend state.
-        //// It will automatically save and restore the previous state.
-        //m_parentWindow->fontSpriteBatch()->Begin(SpriteSortMode_Immediate, m_parentWindow->commonStates()->Opaque());
-        //std::wstring rightSenderW(m_senderNameRight.length(), L' ');
-        //std::copy(m_senderNameRight.begin(), m_senderNameRight.end(), rightSenderW.begin());
-        //std::wstring output = rightSenderW; // std::wstring(L"Right Eye: ") + rightSenderW;
-        //Vector2 bounds = m_parentWindow->font()->MeasureString(output.c_str()) / 2.f;
-        //Vector2 pos(m_spoutLabelX + bounds.x, m_spoutLabelY + 4 * bounds.y);
-        //m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
-        //m_parentWindow->fontSpriteBatch()->End();
-    }
+    // For this test, we are not drawing any textures.
+    // We are only clearing the render targets to distinct colors.
 }
