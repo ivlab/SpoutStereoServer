@@ -66,26 +66,19 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         int w, h;
         g_game->GetDefaultSize(w, h);
 
-        RECT rc = { 0, 0, static_cast<LONG>(w), static_cast<LONG>(h) };
+        // For borderless fullscreen, we get the position from the Game class, which reads it from the config.
+        int x, y;
+        g_game->GetDefaultPosition(x, y);
 
-        AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
-
-        HWND hwnd = CreateWindowExW(0, L"SpoutStereoServerWindowClass", g_szAppName, WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
-            nullptr, nullptr, hInstance,
-            g_game.get());
-        // TODO: Change to CreateWindowExW(WS_EX_TOPMOST, L"SpoutStereoServerWindowClass", g_szAppName, WS_POPUP,
-        // to default to fullscreen.
+        // Create a borderless popup window at the specified CAVE coordinates.
+        HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"SpoutStereoServerWindowClass", g_szAppName, WS_POPUP,
+            x, y, w, h, nullptr, nullptr, hInstance, g_game.get());
 
         if (!hwnd)
             return 1;
 
         ShowWindow(hwnd, nCmdShow);
-        // TODO: Change nCmdShow to SW_SHOWMAXIMIZED to default to fullscreen.
-
-        GetClientRect(hwnd, &rc);
-
-        g_game->Initialize(hwnd);
+        g_game->Initialize(hwnd, true); // Pass true to indicate we are starting in fullscreen mode.
     }
 
     // Main message loop
@@ -116,8 +109,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     static bool s_in_sizemove = false;
     static bool s_in_suspend = false;
     static bool s_minimized = false;
-    static bool s_fullscreen = false;
-    // TODO: Set s_fullscreen to true if defaulting to fullscreen.
+    static bool s_fullscreen = true; // Start in fullscreen mode.
 
     auto game = reinterpret_cast<Game*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 

@@ -141,26 +141,32 @@ void Game::GetDefaultSize(int& width, int& height) const noexcept
     height = ConfigVal::Get("WINDOW_HEIGHT", 1280);
 }
 
+void Game::GetDefaultPosition(int& x, int& y) const noexcept
+{
+    x = ConfigVal::Get("WINDOW_X", 0);
+    y = ConfigVal::Get("WINDOW_Y", 0);
+}
+
 // Initialize the Direct3D resources required to run.
-void Game::Initialize(HWND window)
+void Game::Initialize(HWND window, bool fullscreen)
 {
     m_window = window;
+    // The SpoutStereoWindow doesn't need to know about the fullscreen state.
     m_spoutStereoWindow.Initialize(window); // blank name because only one window
 
     CreateDevice();
     CreateDeviceResources();
     CreateWindowResources();
 
-    // Get the current window style
-    LONG style = GetWindowLong(m_window, GWL_STYLE);
-
-    if (!ConfigVal::Get("WINDOW_TITLEBAR_VISIBLE", true)) {
-        // Remove the caption and sizebox
-        SetWindowLong(m_window, GWL_STYLE, (LONG)(style & ~(WS_CAPTION | WS_SIZEBOX)));
+    if (fullscreen) {
+        // This is already set in Main.cpp, but we can ensure it here.
+        SetWindowPos(m_window, HWND_TOPMOST, m_xPos, m_yPos, m_width, m_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    } else if (!ConfigVal::Get("WINDOW_TITLEBAR_VISIBLE", true)) {
+        // For windowed mode, optionally remove the title bar.
+        LONG style = GetWindowLong(m_window, GWL_STYLE);
+        SetWindowLong(m_window, GWL_STYLE, (LONG)(style & ~(WS_CAPTION | WS_SIZEBOX | WS_THICKFRAME)));
+        SetWindowPos(m_window, HWND_NOTOPMOST, m_xPos, m_yPos, m_width, m_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
     }
-
-    // Set the position, size, and make the window render above the toolbar
-    SetWindowPos(m_window, HWND_TOPMOST, m_xPos, m_yPos, m_width, m_height, SWP_SHOWWINDOW);
 
     // Start minimized
     ShowWindow(m_window, SW_MINIMIZE);
@@ -303,18 +309,14 @@ void Game::CreateWindowResources()
         swapChainDesc.OutputWindow = m_window;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
-        swapChainDesc.Windowed = FALSE; // Must be FALSE to initialize stereo with this API
+        // For borderless fullscreen window, Windowed must be TRUE.
+        swapChainDesc.Windowed = TRUE;
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
         swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // This flag enables stereo for the older swap chain model.
 
         // Create a SwapChain from a Win32 window.
         DX::ThrowIfFailed(
             dxgiFactory->CreateSwapChain(m_d3dDevice.Get(), &swapChainDesc, m_swapChain.ReleaseAndGetAddressOf())
-        );
-
-        // Now that the swap chain is created and stereo is initialized, switch back to windowed mode.
-        DX::ThrowIfFailed(
-            m_swapChain->SetFullscreenState(FALSE, nullptr)
         );
 
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.

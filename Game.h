@@ -25,7 +25,7 @@ public:
     Game& operator= (Game const&) = delete;
 
     // Initialization and management
-    void Initialize(HWND window);
+    void Initialize(HWND window, bool fullscreen);
 
     // Basic game loop
     void Tick();
@@ -40,6 +40,7 @@ public:
 
     // Properties
     void GetDefaultSize( int& width, int& height ) const noexcept;
+    void GetDefaultPosition(int& x, int& y) const noexcept;
 
 private:
 
