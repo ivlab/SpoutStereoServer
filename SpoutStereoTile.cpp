@@ -298,7 +298,7 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewLeft);
         m_d3dContext->Draw(4, 0);
 
-        m_parentWindow->fontSpriteBatch()->Begin();
+        m_parentWindow->fontSpriteBatch()->Begin(DirectX::SpriteSortMode_Immediate);
         std::wstring leftSenderW(m_senderNameLeft.length(), L' ');
         std::copy(m_senderNameLeft.begin(), m_senderNameLeft.end(), leftSenderW.begin());
         std::wstring output = leftSenderW; // std::wstring(L"Left Eye: ") + leftSenderW;
@@ -307,8 +307,6 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
         m_parentWindow->fontSpriteBatch()->End();
     }
-    // Force the sprite batch to render now before we switch to the right eye
-    m_parentWindow->fontSpriteBatch()->Begin(); m_parentWindow->fontSpriteBatch()->End();
 
 
     // -- RIGHT EYE --
@@ -324,7 +322,7 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewRight);
         m_d3dContext->Draw(4, 0);
 
-        m_parentWindow->fontSpriteBatch()->Begin();
+        m_parentWindow->fontSpriteBatch()->Begin(DirectX::SpriteSortMode_Immediate);
         std::wstring rightSenderW(m_senderNameRight.length(), L' ');
         std::copy(m_senderNameRight.begin(), m_senderNameRight.end(), rightSenderW.begin());
         std::wstring output = rightSenderW; // std::wstring(L"Right Eye: ") + rightSenderW;
