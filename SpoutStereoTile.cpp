@@ -307,6 +307,8 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
         m_parentWindow->fontSpriteBatch()->End();
     }
+    // Force the sprite batch to render now before we switch to the right eye
+    m_parentWindow->fontSpriteBatch()->Begin(); m_parentWindow->fontSpriteBatch()->End();
 
 
     // -- RIGHT EYE --
