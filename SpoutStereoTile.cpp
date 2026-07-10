@@ -284,6 +284,20 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
     // Clear the left eye to Red
     m_d3dContext->ClearRenderTargetView(renderTargetViewLeft.Get(), Colors::Red);
 
+    // Force the GPU to finish all commands for the left eye before we proceed.
+    // This creates a synchronization point and prevents the left eye's rendering
+    // from being deferred and incorrectly drawn on the right eye's buffer.
+    {
+        D3D11_QUERY_DESC queryDesc = {};
+        queryDesc.Query = D3D11_QUERY_EVENT;
+        ComPtr<ID3D11Query> pQuery;
+        m_d3dDevice->CreateQuery(&queryDesc, pQuery.GetAddressOf());
+        if (pQuery) {
+            m_d3dContext->End(pQuery.Get());
+            while (m_d3dContext->GetData(pQuery.Get(), NULL, 0, 0) != S_OK);
+        }
+    }
+
     // -- RIGHT EYE --
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
     // Clear the right eye to Blue
