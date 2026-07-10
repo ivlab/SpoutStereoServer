@@ -292,32 +292,30 @@ void Game::CreateWindowResources()
         ComPtr<IDXGIDevice1> dxgiDevice;
         DX::ThrowIfFailed(m_d3dDevice.As(&dxgiDevice));
 
-        // Identify the physical adapter (GPU or card) this device is running on and get the factory.
+        // Identify the physical adapter (GPU or card) this device is running on.
         ComPtr<IDXGIAdapter> dxgiAdapter;
         DX::ThrowIfFailed(dxgiDevice->GetAdapter(dxgiAdapter.GetAddressOf()));
-        ComPtr<IDXGIFactory> dxgiFactory;
+
+        // And obtain the factory object that created it.
+        ComPtr<IDXGIFactory2> dxgiFactory;
         DX::ThrowIfFailed(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
 
-        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-        swapChainDesc.BufferCount = backBufferCount;
-        swapChainDesc.BufferDesc.Width = backBufferWidth;
-        swapChainDesc.BufferDesc.Height = backBufferHeight;
-        swapChainDesc.BufferDesc.Format = backBufferFormat;
-        swapChainDesc.BufferDesc.RefreshRate.Numerator = 0;
-        swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.OutputWindow = m_window;
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+        swapChainDesc.Width = backBufferWidth;
+        swapChainDesc.Height = backBufferHeight;
+        swapChainDesc.Format = backBufferFormat;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
-        // For borderless fullscreen window, Windowed must be TRUE.
-        swapChainDesc.Windowed = TRUE;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-        swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // This flag enables stereo for the older swap chain model.
+        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        swapChainDesc.BufferCount = backBufferCount;
+        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL; // Use flip sequential for stereo compatibility
+        swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+        swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+        swapChainDesc.Stereo = TRUE;
 
         // Create a SwapChain from a Win32 window.
-        DX::ThrowIfFailed(
-            dxgiFactory->CreateSwapChain(m_d3dDevice.Get(), &swapChainDesc, m_swapChain.ReleaseAndGetAddressOf())
-        );
+        DX::ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(m_d3dDevice.Get(), m_window, &swapChainDesc,
+            nullptr, nullptr, m_swapChain.ReleaseAndGetAddressOf()));
 
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.
         DX::ThrowIfFailed(dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER));
