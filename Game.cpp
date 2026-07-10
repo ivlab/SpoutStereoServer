@@ -168,9 +168,6 @@ void Game::Initialize(HWND window, bool fullscreen)
         SetWindowPos(m_window, HWND_NOTOPMOST, m_xPos, m_yPos, m_width, m_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
     }
 
-    // Start minimized
-    ShowWindow(m_window, SW_MINIMIZE);
-
     // Change the timer settings if you want something other than the default variable timestep mode.
     // e.g. for 60 FPS fixed timestep update logic, call:
     /*
@@ -405,6 +402,12 @@ void Game::Render()
     // Don't try to render anything before the first Update.
     if (m_timer.GetFrameCount() == 0) {
         return;
+    }
+
+    // On the first frame, if we are not receiving from spout, minimize the window.
+    // This ensures initialization happens on a visible window, which is more stable for stereo.
+    if (m_timer.GetFrameCount() == 1 && !m_spoutStereoWindow.receivingFromSpout()) {
+        ShowWindow(m_window, SW_MINIMIZE);
     }
 
     m_spoutStereoWindow.Draw(m_renderTargetViewLeft, m_renderTargetViewRight);
