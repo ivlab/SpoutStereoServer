@@ -479,20 +479,33 @@ void Game::OnWindowSizeChanged(int width, int height)
     if (width == 0 && height == 0) {
         if (m_swapChain) {
             BOOL fullscreen;
-            m_swapChain->GetFullscreenState(&fullscreen, nullptr);
-            m_swapChain->SetFullscreenState(!fullscreen, nullptr);
-            // The swap chain will automatically send a WM_SIZE message,
-            // which will trigger the resize logic below.
+            if (SUCCEEDED(m_swapChain->GetFullscreenState(&fullscreen, nullptr)))
+            {
+                m_swapChain->SetFullscreenState(!fullscreen, nullptr);
+                // The swap chain will automatically send a WM_SIZE message,
+                // which will trigger the resize logic below.
+                return; // Avoid re-entering the resize logic immediately.
+            }
         }
     }
-    else {
-        // Standard window resize.
-        m_width = (std::max)(width, 1);
-        m_height = (std::max)(height, 1);
 
-        if (m_swapChain) {
-            ReleaseWindowResources();
-            CreateWindowResources();
+    // Standard window resize.
+    m_width = (std::max)(width, 1);
+    m_height = (std::max)(height, 1);
+
+    if (m_swapChain) {
+        // This is the critical part. We must release the old render targets
+        // before calling ResizeBuffers.
+        m_renderTargetViewLeft.Reset();
+        m_renderTargetViewRight.Reset();
+        m_d3dContext->Flush();
+
+        HRESULT hr = m_swapChain->ResizeBuffers(0, m_width, m_height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+        if (FAILED(hr)) {
+            // If the device was removed, we need to re-create everything.
+            OnDeviceLost();
         }
+        // After resizing, we need to re-create the render target views.
+        CreateWindowResources();
     }
 }
