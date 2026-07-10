@@ -281,6 +281,9 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
 
     // -- LEFT EYE --
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewLeft.GetAddressOf(), nullptr);
+    // Clear just the viewport area for this tile
+    m_d3dContext->ClearRenderTargetView(renderTargetViewLeft.Get(), Colors::CornflowerBlue);
+
 
     m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     m_d3dContext->VSSetShader(m_parentWindow->fullscreenVertexShader(), nullptr, 0);
@@ -308,6 +311,9 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
 
     // -- RIGHT EYE --
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
+    // Clear just the viewport area for this tile
+    m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::CornflowerBlue);
+
     if (m_receivedTextureViewRight) {
         m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
         m_d3dContext->Draw(4, 0);

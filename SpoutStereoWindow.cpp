@@ -298,10 +298,6 @@ void
 SpoutStereoWindow::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft, 
                         ComPtr<ID3D11RenderTargetView> renderTargetViewRight)
 {
-    // Clear the left and right eye intermediate textures
-    m_d3dContext->ClearRenderTargetView(renderTargetViewLeft.Get(), Colors::CornflowerBlue);
-    m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::CornflowerBlue);
-
     for (auto tile = m_tiles.begin(); tile != m_tiles.end(); tile++) {
         (*tile)->Draw(renderTargetViewLeft, renderTargetViewRight);
     }
