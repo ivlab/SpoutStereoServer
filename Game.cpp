@@ -269,10 +269,14 @@ void Game::CreateWindowResources()
     const DXGI_FORMAT backBufferFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
     constexpr UINT backBufferCount = 2;
 
+    ComPtr<IDXGIOutput> dxgiOutput;
+
     // If the swap chain already exists, resize it, otherwise create one.
     if (m_swapChain) {
         HRESULT hr = m_swapChain->ResizeBuffers(backBufferCount, backBufferWidth, backBufferHeight, backBufferFormat, 0);
         if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
+            // Get the output from the existing swap chain before we lose it.
+            m_swapChain->GetContainingOutput(dxgiOutput.GetAddressOf());
             // If the device was removed for any reason, a new device and swap chain will need to be created.
             OnDeviceLost();
 
@@ -283,6 +287,8 @@ void Game::CreateWindowResources()
         else {
             DX::ThrowIfFailed(hr);
         }
+        // Get the output from the existing swap chain.
+        DX::ThrowIfFailed(m_swapChain->GetContainingOutput(dxgiOutput.GetAddressOf()));
     }
     else {
         // First, retrieve the underlying DXGI Device from the D3D Device.
@@ -296,7 +302,6 @@ void Game::CreateWindowResources()
         DX::ThrowIfFailed(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
 
         // Get the first output (monitor) on the adapter.
-        ComPtr<IDXGIOutput> dxgiOutput;
         DX::ThrowIfFailed(dxgiAdapter->EnumOutputs(0, dxgiOutput.GetAddressOf()));
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
