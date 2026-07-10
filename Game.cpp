@@ -474,11 +474,25 @@ void Game::OnWindowSizeChanged(int width, int height)
 {
     if (!m_window)
         return;
+    
+    // A width and height of 0 indicates an Alt+Enter fullscreen toggle.
+    if (width == 0 && height == 0) {
+        if (m_swapChain) {
+            BOOL fullscreen;
+            m_swapChain->GetFullscreenState(&fullscreen, nullptr);
+            m_swapChain->SetFullscreenState(!fullscreen, nullptr);
+            // The swap chain will automatically send a WM_SIZE message,
+            // which will trigger the resize logic below.
+        }
+    }
+    else {
+        // Standard window resize.
+        m_width = (std::max)(width, 1);
+        m_height = (std::max)(height, 1);
 
-    // TODO: Game window is being resized.
-    m_width = (std::max)(width, 1);
-    m_height = (std::max)(height, 1);
-
-    ReleaseWindowResources();
-    CreateWindowResources();
+        if (m_swapChain) {
+            ReleaseWindowResources();
+            CreateWindowResources();
+        }
+    }
 }

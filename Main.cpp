@@ -255,30 +255,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (wParam == VK_RETURN && (lParam & 0x60000000) == 0x20000000)
         {
             // Implements the classic ALT+ENTER fullscreen toggle
-            if (s_fullscreen)
-            {
-                // Restore windowed mode
-                SetWindowLongPtr(hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
-                SetWindowLongPtr(hWnd, GWL_EXSTYLE, 0);
-
-                int width, height;
-                if (game)
-                    game->GetDefaultSize(width, height);
-
-                ShowWindow(hWnd, SW_SHOWNORMAL);
-                SetWindowPos(hWnd, HWND_TOP, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
-                
-                if (game)
-                    game->OnWindowSizeChanged(width, height);
-            }
-            else
-            {
-                // Switch to borderless fullscreen
-                SetWindowLongPtr(hWnd, GWL_STYLE, WS_POPUP);
-                SetWindowLongPtr(hWnd, GWL_EXSTYLE, WS_EX_TOPMOST);
-
-                // The WM_SIZE message sent by SW_SHOWMAXIMIZED will trigger the resize.
-                ShowWindow(hWnd, SW_SHOWMAXIMIZED);
+            if (game) {
+                // For exclusive fullscreen, the game class handles the transition.
+                // We just need to call OnWindowSizeChanged with the new state.
+                // The actual resize will be handled by the swap chain.
+                game->OnWindowSizeChanged(0, 0);
             }
 
             s_fullscreen = !s_fullscreen;
