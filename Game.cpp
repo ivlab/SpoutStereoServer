@@ -156,7 +156,9 @@ void Game::Initialize(HWND window, bool fullscreen)
 
     CreateDevice();
     CreateDeviceResources();
-    CreateWindowResources();
+
+    // Trigger the first size-dependent setup.
+    OnWindowSizeChanged(m_width, m_height);
 
     if (fullscreen) {
         // This is already set in Main.cpp, but we can ensure it here.
@@ -269,10 +271,8 @@ void Game::CreateWindowResources()
     const DXGI_FORMAT backBufferFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
     constexpr UINT backBufferCount = 2;
 
-    ComPtr<IDXGIOutput> dxgiOutput;
-
     // If the swap chain already exists, resize it, otherwise create one.
-    if (m_swapChain) {
+    if (m_swapChain) { // This block is now only for resizing.
         HRESULT hr = m_swapChain->ResizeBuffers(backBufferCount, backBufferWidth, backBufferHeight, backBufferFormat, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
         if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
             // If the device was removed for any reason, a new device and swap chain will need to be created.
@@ -284,8 +284,7 @@ void Game::CreateWindowResources()
         else {
             DX::ThrowIfFailed(hr);
         }
-    }
-    else {
+    } else { // This block is now only for initial creation.
         // First, retrieve the underlying DXGI Device from the D3D Device.
         ComPtr<IDXGIDevice1> dxgiDevice;
         DX::ThrowIfFailed(m_d3dDevice.As(&dxgiDevice));
@@ -297,6 +296,7 @@ void Game::CreateWindowResources()
         DX::ThrowIfFailed(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
 
         // Get the first output (monitor) on the adapter.
+        ComPtr<IDXGIOutput> dxgiOutput;
         DX::ThrowIfFailed(dxgiAdapter->EnumOutputs(0, dxgiOutput.GetAddressOf()));
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
@@ -321,27 +321,13 @@ void Game::CreateWindowResources()
 
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.
         DX::ThrowIfFailed(dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER));
+
+        // Now that the swap chain is created, enter exclusive fullscreen mode.
+        DX::ThrowIfFailed(m_swapChain->SetFullscreenState(TRUE, dxgiOutput.Get()));
     }
 
     // Obtain the backbuffer for this window which will be the final 3D rendertarget.
     ComPtr<ID3D11Texture2D> backBuffer;
-
-    // If this is the first time, enter exclusive fullscreen mode.
-    if (!m_timer.GetFrameCount()) {
-        DX::ThrowIfFailed(m_swapChain->SetFullscreenState(TRUE, dxgiOutput.Get()));
-
-        // SetFullscreenState will cause a WM_SIZE message to be sent to the window.
-        // We must process it now, before we attempt to Present the first frame.
-        MSG msg = {};
-        while (PeekMessage(&msg, m_window, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-        // After processing messages, the swap chain will have been resized, so we need to get the new back buffer.
-        return; // OnWindowSizeChanged will call this function again.
-    }
-
     DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
 
     // Create a descriptor for the left eye view.
@@ -503,6 +489,24 @@ void Game::OnWindowSizeChanged(int width, int height)
     m_width = (std::max)(width, 1);
     m_height = (std::max)(height, 1);
 
-    ReleaseWindowResources();
+    if (m_swapChain)
+    {
+        // Release resources that are tied to the swap chain.
+        m_renderTargetViewLeft.Reset();
+        m_renderTargetViewRight.Reset();
+        m_d3dContext->Flush();
+
+        // Now, resize the swap chain. This will invalidate the back buffer.
+        HRESULT hr = m_swapChain->ResizeBuffers(0, m_width, m_height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+        if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
+            OnDeviceLost();
+            return;
+        }
+        else {
+            DX::ThrowIfFailed(hr);
+        }
+    }
+
+    // Recreate the render target views from the new back buffer.
     CreateWindowResources();
 }
