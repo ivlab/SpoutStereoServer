@@ -334,7 +334,7 @@ void Game::CreateWindowResources()
     D3D11_TEXTURE2D_DESC texDesc = {};
     m_backBuffer->GetDesc(&texDesc);
     texDesc.ArraySize = 1; // Not a texture array
-    texDesc.MiscFlags = 0; // Not shared
+    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_NTHANDLE; // Use NT Handles for robust stereo compatibility
 
     DX::ThrowIfFailed(
         m_d3dDevice->CreateTexture2D(&texDesc, nullptr, m_leftEyeTexture.ReleaseAndGetAddressOf())
