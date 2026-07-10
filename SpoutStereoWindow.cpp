@@ -295,18 +295,13 @@ SpoutStereoWindow::Update()
 
 
 void
-SpoutStereoWindow::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft, 
-                        ComPtr<ID3D11RenderTargetView> renderTargetViewRight)
+SpoutStereoWindow::Draw(ComPtr<ID3D11RenderTargetView> renderTargetView)
 {
-    // LEFT EYE
-    m_d3dContext->OMSetRenderTargets(1, renderTargetViewLeft.GetAddressOf(), nullptr);
-    m_d3dContext->ClearRenderTargetView(renderTargetViewLeft.Get(), Colors::Red);
-
-    // RIGHT EYE
-    m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
-    m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::Blue);
+    // Set the single render target. The driver handles which eye is being drawn to.
+    m_d3dContext->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), nullptr);
+    m_d3dContext->ClearRenderTargetView(renderTargetView.Get(), Colors::CornflowerBlue);
 
     for (auto tile = m_tiles.begin(); tile != m_tiles.end(); tile++) {
-        (*tile)->Draw(renderTargetViewLeft, renderTargetViewRight);
+        (*tile)->Draw(renderTargetView);
     }
 }

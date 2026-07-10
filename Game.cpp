@@ -325,24 +325,10 @@ void Game::CreateWindowResources()
     ComPtr<ID3D11Texture2D> backBuffer;
     DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
 
-    // Create a descriptor for the left eye view.
-    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewLeftDesc(
-        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 0, 1
-    );
-
-    // Create a view interface on the rendertarget to use on bind for mono or left eye view.
+    // Create a single render target view from the swap chain.
+    // The driver will handle stereo separation based on the swap chain's stereo flag.
     DX::ThrowIfFailed(
-        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewLeftDesc, m_renderTargetViewLeft.ReleaseAndGetAddressOf())
-    );
-
-    // Create a descriptor for the right eye view.
-    CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewRightDesc(
-        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 1, 1
-    );
-
-    // Create a view interface on the rendertarget to use on bind for right eye view.
-    DX::ThrowIfFailed(
-        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), &renderTargetViewRightDesc, m_renderTargetViewRight.ReleaseAndGetAddressOf())
+        m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf())
     );
 
     m_spoutStereoWindow.CreateWindowResources();
@@ -354,8 +340,7 @@ void Game::ReleaseWindowResources()
 
     // Clear the previous window size specific context.
     m_d3dContext->OMSetRenderTargets(0, nullptr, nullptr);
-    m_renderTargetViewLeft.Reset();
-    m_renderTargetViewRight.Reset();
+    m_renderTargetView.Reset();
     m_swapChain.Reset();
     m_d3dContext->Flush();
 }
@@ -409,7 +394,7 @@ void Game::Render()
         return;
     }
 
-    m_spoutStereoWindow.Draw(m_renderTargetViewLeft, m_renderTargetViewRight);
+    m_spoutStereoWindow.Draw(m_renderTargetView);
 
     Present();
 }

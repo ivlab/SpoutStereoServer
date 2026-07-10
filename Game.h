@@ -63,8 +63,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Device>            m_d3dDevice;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext>     m_d3dContext;
     Microsoft::WRL::ComPtr<IDXGISwapChain>          m_swapChain;
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView>  m_renderTargetViewLeft;
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView>  m_renderTargetViewRight;
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView>  m_renderTargetView;
     DX::StepTimer                                   m_timer;
 
     int m_xPos;

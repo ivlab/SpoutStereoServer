@@ -274,13 +274,12 @@ SpoutStereoTile::Update()
 
 
 void
-SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft, 
-                      ComPtr<ID3D11RenderTargetView> renderTargetViewRight)
+SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetView)
 {
     m_d3dContext->RSSetViewports(1, &m_viewport);
 
     // -- LEFT EYE --
-    m_d3dContext->OMSetRenderTargets(1, renderTargetViewLeft.GetAddressOf(), nullptr);
+    m_d3dContext->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), nullptr);
 
     m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     m_d3dContext->VSSetShader(m_parentWindow->fullscreenVertexShader(), nullptr, 0);
@@ -307,7 +306,7 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
 
 
     // -- RIGHT EYE --
-    m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
+    m_d3dContext->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), nullptr);
     if (m_receivedTextureViewRight) {
         m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
         m_d3dContext->Draw(4, 0);

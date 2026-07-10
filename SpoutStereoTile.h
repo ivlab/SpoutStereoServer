@@ -27,7 +27,7 @@ public:
 
     void Update();
 
-    void Draw(Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetViewLeft, Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetViewRight);
+    void Draw(Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView);
 
     bool getShowDebugGraphics() {
         return m_showDebugGraphics;
