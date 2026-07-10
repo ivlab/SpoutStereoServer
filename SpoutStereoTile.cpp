@@ -298,10 +298,10 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewLeft);
         m_d3dContext->Draw(4, 0);
 
-        // Save state, draw the text, and then restore the original state for the main texture rendering.
-        auto states = m_parentWindow->commonStates();
-        m_d3dContext->OMSetBlendState(states->Opaque(), nullptr, 0xFFFFFFFF);
-        m_parentWindow->fontSpriteBatch()->Begin(DirectX::SpriteSortMode_Immediate);
+        // Use a lambda to set the blend state for the sprite batch, which will be restored automatically on End()
+        m_parentWindow->fontSpriteBatch()->Begin(SpriteSortMode_Immediate, [=]() {
+            m_d3dContext->OMSetBlendState(m_parentWindow->commonStates()->Opaque(), nullptr, 0xFFFFFFFF);
+            });
         std::wstring leftSenderW(m_senderNameLeft.length(), L' ');
         std::copy(m_senderNameLeft.begin(), m_senderNameLeft.end(), leftSenderW.begin());
         std::wstring output = leftSenderW; // std::wstring(L"Left Eye: ") + leftSenderW;
@@ -309,14 +309,18 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         Vector2 pos(m_spoutLabelX + bounds.x, m_spoutLabelY + bounds.y);
         m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
         m_parentWindow->fontSpriteBatch()->End();
-        // Restore default blend state
-        m_d3dContext->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
     }
 
     // -- RIGHT EYE --
     m_d3dContext->OMSetRenderTargets(1, renderTargetViewRight.GetAddressOf(), nullptr);
     // Clear just the viewport area for this tile
     m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::CornflowerBlue);
+
+    // Re-apply the shaders and sampler state for the right eye, as SpriteBatch may have changed them.
+    m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    m_d3dContext->VSSetShader(m_parentWindow->fullscreenVertexShader(), nullptr, 0);
+    m_d3dContext->PSSetShader(m_parentWindow->fullscreenPixelShader(), nullptr, 0);
+    m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
 
     if (m_receivedTextureViewRight) {
         m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
@@ -326,10 +330,10 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         m_d3dContext->PSSetShaderResources(0, 1, &m_defaultTextureViewRight);
         m_d3dContext->Draw(4, 0);
 
-        // Save state, draw the text, and then restore the original state.
-        auto states = m_parentWindow->commonStates();
-        m_d3dContext->OMSetBlendState(states->Opaque(), nullptr, 0xFFFFFFFF);
-        m_parentWindow->fontSpriteBatch()->Begin(DirectX::SpriteSortMode_Immediate);
+        // Use a lambda to set the blend state for the sprite batch, which will be restored automatically on End()
+        m_parentWindow->fontSpriteBatch()->Begin(SpriteSortMode_Immediate, [=]() {
+            m_d3dContext->OMSetBlendState(m_parentWindow->commonStates()->Opaque(), nullptr, 0xFFFFFFFF);
+            });
         std::wstring rightSenderW(m_senderNameRight.length(), L' ');
         std::copy(m_senderNameRight.begin(), m_senderNameRight.end(), rightSenderW.begin());
         std::wstring output = rightSenderW; // std::wstring(L"Right Eye: ") + rightSenderW;
@@ -337,7 +341,5 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
         Vector2 pos(m_spoutLabelX + bounds.x, m_spoutLabelY + 4 * bounds.y);
         m_parentWindow->font()->DrawString(m_parentWindow->fontSpriteBatch().get(), output.c_str(), pos, Colors::White, 0.f, bounds);
         m_parentWindow->fontSpriteBatch()->End();
-        // Restore default blend state
-        m_d3dContext->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
     }
 }
