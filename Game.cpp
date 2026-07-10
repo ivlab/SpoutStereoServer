@@ -304,9 +304,8 @@ void Game::CreateWindowResources()
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
         swapChainDesc.Windowed = TRUE;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // Use bitblt model for stereo compatibility on Win11
-        swapChainDesc.Stereo = TRUE;
-        swapChainDesc.Flags = 0;
+        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+        swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // This flag enables stereo for the older swap chain model.
 
         // Create a SwapChain from a Win32 window.
         DX::ThrowIfFailed(
