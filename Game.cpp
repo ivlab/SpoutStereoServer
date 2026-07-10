@@ -286,35 +286,31 @@ void Game::CreateWindowResources()
         ComPtr<IDXGIDevice1> dxgiDevice;
         DX::ThrowIfFailed(m_d3dDevice.As(&dxgiDevice));
 
-        // Identify the physical adapter (GPU or card) this device is running on.
+        // Identify the physical adapter (GPU or card) this device is running on and get the factory.
         ComPtr<IDXGIAdapter> dxgiAdapter;
         DX::ThrowIfFailed(dxgiDevice->GetAdapter(dxgiAdapter.GetAddressOf()));
-
-        // And obtain the factory object that created it.
-        ComPtr<IDXGIFactory2> dxgiFactory;
+        ComPtr<IDXGIFactory> dxgiFactory;
         DX::ThrowIfFailed(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
 
-        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
-        swapChainDesc.Width = backBufferWidth;
-        swapChainDesc.Height = backBufferHeight;
-        swapChainDesc.Format = backBufferFormat;
+        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+        swapChainDesc.BufferCount = backBufferCount;
+        swapChainDesc.BufferDesc.Width = backBufferWidth;
+        swapChainDesc.BufferDesc.Height = backBufferHeight;
+        swapChainDesc.BufferDesc.Format = backBufferFormat;
+        swapChainDesc.BufferDesc.RefreshRate.Numerator = 0;
+        swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
+        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        swapChainDesc.OutputWindow = m_window;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
-        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.BufferCount = backBufferCount;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-        swapChainDesc.Scaling = DXGI_SCALING_NONE; // ASPECT_RATIO_STRETCH;
-        swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+        swapChainDesc.Windowed = TRUE;
+        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // Use bitblt model for stereo compatibility on Win11
         swapChainDesc.Stereo = TRUE;
         swapChainDesc.Flags = 0;
 
-        DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
-        fsSwapChainDesc.Windowed = TRUE;
-
         // Create a SwapChain from a Win32 window.
         DX::ThrowIfFailed(
-            dxgiFactory->CreateSwapChainForHwnd(m_d3dDevice.Get(), m_window, &swapChainDesc,
-                &fsSwapChainDesc, nullptr, m_swapChain.ReleaseAndGetAddressOf())
+            dxgiFactory->CreateSwapChain(m_d3dDevice.Get(), &swapChainDesc, m_swapChain.ReleaseAndGetAddressOf())
         );
 
         // This template does not support exclusive fullscreen mode and prevents DXGI from responding to the ALT+ENTER shortcut.
@@ -467,4 +463,3 @@ void Game::OnWindowSizeChanged(int width, int height)
     ReleaseWindowResources();
     CreateWindowResources();
 }
-
