@@ -314,6 +314,12 @@ SpoutStereoTile::Draw(ComPtr<ID3D11RenderTargetView> renderTargetViewLeft,
     // Clear just the viewport area for this tile
     m_d3dContext->ClearRenderTargetView(renderTargetViewRight.Get(), Colors::CornflowerBlue);
 
+    // Re-apply the shaders and sampler state for the right eye, as SpriteBatch changes them.
+    m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    m_d3dContext->VSSetShader(m_parentWindow->fullscreenVertexShader(), nullptr, 0);
+    m_d3dContext->PSSetShader(m_parentWindow->fullscreenPixelShader(), nullptr, 0);
+    m_d3dContext->PSSetSamplers(0, 1, &m_samplerState);
+
     if (m_receivedTextureViewRight) {
         m_d3dContext->PSSetShaderResources(0, 1, &m_receivedTextureViewRight);
         m_d3dContext->Draw(4, 0);
