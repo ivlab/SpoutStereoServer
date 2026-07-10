@@ -333,6 +333,17 @@ void Game::CreateWindowResources()
 
     // Enter exclusive fullscreen mode.
     DX::ThrowIfFailed(m_swapChain->SetFullscreenState(TRUE, dxgiOutput.Get()));
+
+    // SetFullscreenState will cause a WM_SIZE message to be sent to the window.
+    // We must process it now, before we attempt to Present the first frame.
+    MSG msg = {};
+    while (PeekMessage(&msg, m_window, 0, 0, PM_REMOVE))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    // Now that the resize has been handled, get the back buffer.
     DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
 
     // Create a descriptor for the left eye view.
