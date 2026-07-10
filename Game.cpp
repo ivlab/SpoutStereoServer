@@ -418,11 +418,11 @@ void Game::Render()
         return;
     }
 
-    // On the first frame, if we are not receiving from spout, minimize the window.
-    // This ensures initialization happens on a visible window, which is more stable for stereo.
-    if (m_timer.GetFrameCount() == 1 && !m_spoutStereoWindow.receivingFromSpout()) {
-        ShowWindow(m_window, SW_MINIMIZE);
-    }
+    //// On the first frame, if we are not receiving from spout, minimize the window.
+    //// This ensures initialization happens on a visible window, which is more stable for stereo.
+    //if (m_timer.GetFrameCount() == 1 && !m_spoutStereoWindow.receivingFromSpout()) {
+    //    ShowWindow(m_window, SW_MINIMIZE);
+    //}
 
     m_spoutStereoWindow.Draw(m_renderTargetViewLeft, m_renderTargetViewRight);
 
